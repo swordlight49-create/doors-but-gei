@@ -1,0 +1,3551 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOORS BUT GEI — Binlight</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    (function loadSocketIo() {
+      const s = document.createElement('script');
+      s.src = '/socket.io/socket.io.js';
+      s.async = false;
+      s.onerror = () => { window.__SOCKET_UNAVAILABLE__ = true; };
+      document.head.appendChild(s);
+    })();
+  </script>
+  <style>
+    :root {
+      --bg-dark: #09080f;
+      --bg-panel: rgba(16, 14, 28, 0.94);
+      --border: rgba(168, 85, 247, 0.28);
+      --accent: #a855f7;
+      --accent-2: #ec4899;
+      --danger: #ef4444;
+      --ok: #22c55e;
+      --gold: #facc15;
+      --text: #f3f0ff;
+      --muted: #a19ab8;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-dark);
+      color: var(--text);
+    }
+
+    #game-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ================= MAIN MENU ================= */
+    #main-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 25%, rgba(168, 85, 247, 0.22), transparent 55%),
+        radial-gradient(circle at 20% 80%, rgba(236, 72, 153, 0.14), transparent 50%),
+        linear-gradient(180deg, #07060c 0%, #110d20 60%, #07060b 100%);
+      padding: 24px;
+    }
+
+    .admin-corner-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 40;
+      background: rgba(20, 17, 36, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--muted);
+      padding: 7px 13px;
+      border-radius: 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .admin-corner-btn:hover, .admin-corner-btn.active {
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+    }
+
+    .brand-title {
+      font-size: clamp(42px, 7vw, 78px);
+      font-weight: 900;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #fff 0%, #d8b4fe 45%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 38px rgba(168, 85, 247, 0.45);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .brand-sub {
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 34px;
+      text-align: center;
+    }
+
+    .menu-profile-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 18px;
+      background: rgba(18, 15, 32, 0.85);
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 12px;
+    }
+
+    .menu-profile-bar label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .menu-profile-bar input {
+      background: rgba(8, 7, 15, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      width: 170px;
+      outline: none;
+    }
+
+    .menu-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: min(360px, 90vw);
+    }
+
+    .btn {
+      padding: 13px 18px;
+      border-radius: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(24, 20, 44, 0.88);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: rgba(45, 29, 82, 0.95);
+      border-color: var(--accent);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7e22ce, #db2777);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    .menu-footer {
+      position: fixed;
+      bottom: 14px;
+      width: 100%;
+      text-align: center;
+      color: rgba(200, 190, 230, 0.55);
+      font-size: 13px;
+      letter-spacing: 1px;
+      z-index: 35;
+    }
+
+    /* ================= MODALS / PANELS ================= */
+    .overlay-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(4, 3, 9, 0.82);
+      padding: 20px;
+    }
+
+    .overlay-panel.open {
+      display: flex;
+    }
+
+    .card {
+      width: min(720px, 95vw);
+      max-height: 88vh;
+      overflow-y: auto;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 24px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .server-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .server-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .badge-wait { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .badge-play { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .badge-host { background: rgba(168, 85, 247, 0.28); color: #e9d5ff; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 12px 0 16px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-field label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .form-field input, .form-field select {
+      background: rgba(8, 7, 15, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #fff;
+      padding: 9px 11px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 10px;
+    }
+
+    .guide-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .guide-box h3 {
+      font-size: 15px;
+      color: #e9d5ff;
+      margin-bottom: 8px;
+    }
+
+    .guide-box p, .guide-box li {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #d8d2ea;
+      margin-bottom: 5px;
+    }
+
+    .guide-box ul {
+      padding-left: 16px;
+    }
+
+    /* ================= HUD TỐI ƯU GỌN GÀNG ================= */
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      display: none;
+    }
+
+    #hud.active {
+      display: block;
+    }
+
+    .hud-top {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-cluster {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: rgba(9, 8, 18, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+
+    .hud-sep {
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    .compass-compact {
+      background: rgba(9, 8, 18, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 5px 14px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .compass-dir {
+      font-weight: 800;
+      color: #f0abfc;
+    }
+
+    .compass-sub {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .hud-right-actions {
+      display: flex;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .monster-warning-banner {
+      position: fixed;
+      top: 58px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 26;
+      background: rgba(127, 29, 29, 0.88);
+      border: 1.5px solid #fca5a5;
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      display: none;
+      text-align: center;
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.55);
+    }
+
+    .spectate-bar {
+      position: fixed;
+      top: 58px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 28;
+      display: none;
+      gap: 8px;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid #38bdf8;
+      padding: 7px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      pointer-events: auto;
+    }
+
+    .spectate-bar.active {
+      display: flex;
+    }
+
+    .crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.95);
+      transform: translate(-50%, -50%);
+    }
+
+    .prompt-banner {
+      position: fixed;
+      top: 57%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(9, 8, 18, 0.82);
+      border: 1px solid rgba(250, 204, 21, 0.48);
+      color: #fef08a;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      display: none;
+    }
+
+    .toast-msg {
+      position: fixed;
+      bottom: 92px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 12, 28, 0.88);
+      border: 1px solid rgba(168, 85, 247, 0.6);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .toast-msg.show {
+      opacity: 1;
+    }
+
+    .hud-bottom {
+      position: fixed;
+      bottom: 10px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .bars-compact {
+      background: rgba(9, 8, 18, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 7px 11px;
+      width: 190px;
+    }
+
+    .bar-row {
+      margin-bottom: 5px;
+    }
+
+    .bar-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .bar-track {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .bar-fill-hp {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #dc2626, #22c55e);
+    }
+
+    .bar-fill-st {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #0284c7, #38bdf8);
+    }
+
+    .hotbar {
+      display: flex;
+      gap: 5px;
+      pointer-events: auto;
+      background: rgba(9, 8, 18, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 5px;
+      border-radius: 10px;
+    }
+
+    .slot {
+      width: 56px;
+      height: 52px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      text-align: center;
+      padding: 3px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .slot.active {
+      border-color: var(--gold);
+      background: rgba(250, 204, 21, 0.14);
+    }
+
+    .slot-key {
+      position: absolute;
+      top: 2px;
+      left: 5px;
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .slot-count {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--gold);
+      margin-top: 2px;
+    }
+
+    .craft-quick-compact {
+      background: rgba(9, 8, 18, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 6px 8px;
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .craft-quick-compact .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    /* ================= MOD MENU & CRAFT MODAL ================= */
+    #mod-menu-panel {
+      position: fixed;
+      top: 56px;
+      right: 12px;
+      width: 310px;
+      max-height: 78vh;
+      overflow-y: auto;
+      z-index: 42;
+      background: rgba(16, 12, 30, 0.96);
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      padding: 14px;
+      display: none;
+      pointer-events: auto;
+    }
+
+    #mod-menu-panel.open {
+      display: block;
+    }
+
+    .mod-section {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .mod-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    .mod-section h4 {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #d8b4fe;
+      margin-bottom: 8px;
+    }
+
+    .mod-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    /* ================= HEARTBEAT MINIGAME ================= */
+    #heartbeat-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(35, 0, 10, 0.72);
+    }
+
+    #heartbeat-modal.active {
+      display: flex;
+    }
+
+    .hb-card {
+      width: min(440px, 92vw);
+      background: rgba(22, 8, 16, 0.95);
+      border: 2px solid #ef4444;
+      border-radius: 16px;
+      padding: 22px;
+      text-align: center;
+    }
+
+    .hb-track {
+      position: relative;
+      height: 28px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.12);
+      margin: 16px 0;
+      overflow: hidden;
+    }
+
+    .hb-zone {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 36%;
+      width: 28%;
+      background: rgba(34, 197, 94, 0.55);
+      border-left: 2px solid #86efac;
+      border-right: 2px solid #86efac;
+    }
+
+    .hb-cursor {
+      position: absolute;
+      top: -2px;
+      bottom: -2px;
+      width: 6px;
+      background: #fff;
+      left: 0%;
+    }
+
+    /* ================= GUIDING LIGHT DEATH SCREEN ================= */
+    #guiding-light-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.28), rgba(7, 16, 36, 0.96) 65%);
+    }
+
+    #guiding-light-screen.active {
+      display: flex;
+    }
+
+    .gl-title {
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 900;
+      letter-spacing: 5px;
+      color: #bae6fd;
+      margin-bottom: 12px;
+    }
+
+    .gl-cause {
+      font-size: 16px;
+      color: #7dd3fc;
+      margin-bottom: 18px;
+      font-weight: 700;
+    }
+
+    .gl-advice {
+      max-width: 580px;
+      background: rgba(10, 25, 47, 0.8);
+      border: 1px solid rgba(125, 211, 252, 0.4);
+      border-radius: 14px;
+      padding: 18px 22px;
+      font-size: 16px;
+      line-height: 1.65;
+      color: #e0f2fe;
+      margin-bottom: 24px;
+    }
+
+    .jumpscare-flash {
+      position: fixed;
+      inset: 0;
+      z-index: 55;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.5), transparent 70%);
+      opacity: 0;
+    }
+
+    .jumpscare-flash.active {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <div id="jumpscare-flash" class="jumpscare-flash"></div>
+
+  <button id="admin-lock-btn" class="admin-corner-btn" title="Admin">🔒 Admin</button>
+
+  <!-- ================= MAIN MENU ================= -->
+  <div id="main-menu">
+    <h1 class="brand-title">DOORS BUT GEI</h1>
+    <div class="brand-sub">3D Survival Horror Experience</div>
+
+    <div class="menu-profile-bar">
+      <label for="player-name-input">Tên nhân vật:</label>
+      <input id="player-name-input" type="text" maxlength="20" value="Khách_01" />
+    </div>
+
+    <div class="menu-buttons">
+      <button id="btn-solo" class="btn btn-primary">Chơi Solo</button>
+      <button id="btn-server" class="btn">Server</button>
+      <button id="btn-guide" class="btn">Hướng dẫn</button>
+    </div>
+  </div>
+
+  <div class="menu-footer">© Binlight</div>
+
+  <!-- ================= ADMIN PASSWORD MODAL ================= -->
+  <div id="admin-modal" class="overlay-panel">
+    <div class="card" style="max-width: 400px;">
+      <div class="card-header">
+        <div class="card-title">Xác thực Admin</div>
+        <button class="btn btn-sm" onclick="closeModal('admin-modal')">✕</button>
+      </div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:10px;">Nhập mã truy cập để mở khóa Mod Menu trong ván chơi.</p>
+      <div class="form-field">
+        <label for="admin-pass-input">Mật khẩu</label>
+        <input id="admin-pass-input" type="password" placeholder="••••" autocomplete="off" />
+      </div>
+      <div id="admin-pass-msg" style="font-size:12px; color:#fca5a5; min-height:18px; margin-bottom:10px;"></div>
+      <button id="btn-submit-admin" class="btn btn-primary" style="width:100%;">Kích hoạt Admin</button>
+    </div>
+  </div>
+
+  <!-- ================= SERVER BROWSER & CREATE MODAL ================= -->
+  <div id="server-modal" class="overlay-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Danh sách Server & Tạo phòng</div>
+        <button class="btn btn-sm" onclick="closeModal('server-modal')">✕</button>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span id="server-conn-status" style="font-size:13px; color:var(--muted);">Đang kiểm tra kết nối máy chủ...</span>
+        <div style="display:flex; gap:8px;">
+          <button id="btn-refresh-servers" class="btn btn-sm">Làm mới</button>
+          <button id="btn-toggle-create-form" class="btn btn-sm btn-primary">+ Tạo Server</button>
+        </div>
+      </div>
+
+      <div id="create-server-box" style="display:none; margin-top:14px; padding:14px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--border);">
+        <div style="font-weight:700; margin-bottom:6px;">Tạo Server mới</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="srv-name-input">Tên Server</label>
+            <input id="srv-name-input" type="text" maxlength="32" placeholder="Sảnh kinh dị Binlight" />
+          </div>
+          <div class="form-field">
+            <label for="srv-max-input">Số người tối đa (1–4)</label>
+            <select id="srv-max-input">
+              <option value="2">2 người</option>
+              <option value="3">3 người</option>
+              <option value="4" selected>4 người</option>
+              <option value="1">1 người</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="srv-pass-input">Mật khẩu (tùy chọn)</label>
+            <input id="srv-pass-input" type="password" maxlength="24" placeholder="Để trống nếu công khai" />
+          </div>
+        </div>
+        <button id="btn-confirm-create-server" class="btn btn-sm btn-primary">Tạo & Vào phòng chờ</button>
+      </div>
+
+      <div id="server-list-container" class="server-list"></div>
+    </div>
+  </div>
+
+  <!-- ================= LOBBY MODAL ================= -->
+  <div id="lobby-modal" class="overlay-panel">
+    <div class="card" style="max-width:520px;">
+      <div class="card-header">
+        <div>
+          <div id="lobby-room-title" class="card-title">Phòng chờ</div>
+          <div id="lobby-room-meta" style="font-size:12px; color:var(--muted); margin-top:2px;"></div>
+        </div>
+        <button id="btn-leave-lobby" class="btn btn-sm">Rời phòng</button>
+      </div>
+
+      <div style="font-size:13px; color:#d8b4fe; margin-bottom:8px; font-weight:700;">Người chơi trong phòng:</div>
+      <div id="lobby-players-list" class="server-list"></div>
+
+      <div id="lobby-host-controls" style="margin-top:16px; text-align:center;">
+        <button id="btn-host-start-game" class="btn btn-primary" style="width:100%; display:none;">Bắt đầu ván chơi</button>
+        <div id="lobby-guest-wait" style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.04); color:#cbd5e1; font-size:14px;">
+          Đang chờ Chủ phòng bắt đầu...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= GUIDE MODAL ================= -->
+  <div id="guide-modal" class="overlay-panel">
+    <div class="card" style="max-width:860px;">
+      <div class="card-header">
+        <div class="card-title">Hướng dẫn sinh tồn — DOORS BUT GEI</div>
+        <button class="btn btn-sm" onclick="closeModal('guide-modal')">✕</button>
+      </div>
+      <div class="guide-grid">
+        <div class="guide-box">
+          <h3>Điều khiển & Quan sát</h3>
+          <ul>
+            <li><b>W / S</b> (hoặc <b>↑ / ↓</b>): Tiến / Lùi. <b>A / D</b> hoặc <b>← / →</b>: Ngang <b>Trái / Phải</b>.</li>
+            <li><b>Chuột</b>: Xoay góc nhìn. <b>Shift</b>: Chạy nhanh. <b>C / Ctrl</b>: Cúi người im lặng.</li>
+            <li><b>E</b>: Mở cửa, trượt mở ngăn kéo, chui/ra tủ đồ, nhặt sách hoặc mở bàn chế tạo.</li>
+            <li><b>F</b>: Bật/tắt Đèn Pin. <b>1–6</b>: Hotbar. <b>Chuột trái</b>: Dùng vũ khí/vật phẩm.</li>
+            <li><b>Q</b> (khi đang quan sát đồng đội): Đổi người chơi góc nhìn thứ 3.</li>
+          </ul>
+        </div>
+        <div class="guide-box">
+          <h3>Phòng, Công trình & Chế tạo vũ khí</h3>
+          <ul>
+            <li><b>0001–0100</b>: Phòng tiêu chuẩn, phòng tối, phòng cửa khóa (luôn có chìa khóa trong ngăn kéo), cột trụ, sảnh ghế bàn, phòng công trình/kho, Thư viện <b>Phòng 50</b> (5 sách) và <b>Phòng 100</b>.</li>
+            <li><b>Chế tạo</b>: Dùng <b>Gold</b> tạo <b>Rìu/Gậy Sắt</b> (choáng & đẩy lùi quái gần, đập thùng) và <b>Đèn UV</b> (đẩy lùi & làm chậm quái bóng tối).</li>
+          </ul>
+        </div>
+        <div class="guide-box" style="grid-column: 1 / -1;">
+          <h3>Danh sách Quái vật & Cách đối phó</h3>
+          <ul>
+            <li><b>Rush</b>: Có cảnh báo & đếm ngược <b>10 giây</b> kèm nhấp nháy đèn rồi lao qua phòng -> Vào <b>Tủ (E)</b> trước khi Rush tới.</li>
+            <li><b>Ambush</b>: Có cảnh báo & đếm ngược <b>10 giây</b> rồi lao qua lại (rebound) <b>2–6 lần</b> -> Canh nhịp vào/ra tủ hợp lý.</li>
+            <li><b>Screech</b>: Chỉ có ở <b>Phòng tối</b>, kêu <i>"psst"</i> sau lưng -> Xoay nhanh nhìn thẳng vào Screech.</li>
+            <li><b>Eyes</b>: Đừng nhìn thẳng vào Eyes; cúi người (<b>C/Ctrl</b>) hoặc quay mặt đi.</li>
+            <li><b>Seek</b>: Rượt đuổi quanh <b>Phòng ~35 và ~75</b> -> Chạy <b>Shift</b> và mở cửa nhanh.</li>
+            <li><b>Figure</b>: Tuần tra <b>Phòng 50</b>, nghe tiếng ồn; áp sát tủ sẽ mở <b>Minigame nhịp tim</b> (bấm luân phiên <b>Chuột Trái / Chuột Phải</b> đúng nhịp vùng xanh).</li>
+            <li><b>Hide & Timothy</b>: Ở tủ quá ~10.5s bị <b>Hide</b> đẩy ra; <b>Timothy</b> là nhện hù nhẹ trong ngăn kéo.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CRAFT MODAL ================= -->
+  <div id="craft-modal" class="overlay-panel">
+    <div class="card" style="max-width:480px;">
+      <div class="card-header">
+        <div class="card-title">Bàn Công Trình — Chế tạo vũ khí & Vật phẩm</div>
+        <button class="btn btn-sm" onclick="closeCraftModal()">✕</button>
+      </div>
+      <div style="margin-bottom:12px; font-size:14px;">Gold hiện có: <b id="craft-gold-val" style="color:var(--gold);">0</b></div>
+      <div class="server-list">
+        <div class="server-item">
+          <div>
+            <b>Gậy Sắt / Rìu Cứu Hỏa</b>
+            <div style="font-size:12px; color:var(--muted);">Cận chiến (Chuột Trái): Choáng & đẩy lùi quái gần, đập thùng.</div>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="craftItem('axe', 35)">35 Gold</button>
+        </div>
+        <div class="server-item">
+          <div>
+            <b>Đèn UV / Súng Xung Ánh Sáng</b>
+            <div style="font-size:12px; color:var(--muted);">Xung sáng (Chuột Trái): Đẩy lùi & làm chậm quái bóng tối.</div>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="craftItem('uv', 45)">45 Gold</button>
+        </div>
+        <div class="server-item">
+          <div>
+            <b>Thánh giá (Crucifix)</b>
+            <div style="font-size:12px; color:var(--muted);">Phong ấn tạm thời quái vật khi cầm trên tay.</div>
+          </div>
+          <button class="btn btn-sm" onclick="craftItem('crucifix', 60)">60 Gold</button>
+        </div>
+        <div class="server-item">
+          <div>
+            <b>Vitamins (+HP & Tốc độ)</b>
+            <div style="font-size:12px; color:var(--muted);">Hồi +25 HP và hồi đầy Stamina.</div>
+          </div>
+          <button class="btn btn-sm" onclick="craftItem('vitamins', 20)">20 Gold</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= HUD TỐI ƯU ================= -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="hud-cluster">
+        <span>Phòng <b id="hud-room">0001/0100</b></span>
+        <span class="hud-sep">|</span>
+        <span id="hud-room-type">Sảnh khách sạn</span>
+        <span class="hud-sep">|</span>
+        <span style="color:var(--gold);">Gold <b id="hud-gold">25</b></span>
+        <span id="hud-objective" style="display:none; color:#7dd3fc;">
+          <span class="hud-sep">|</span> Sách <b id="hud-books">0/5</b>
+        </span>
+      </div>
+
+      <div class="compass-compact">
+        <div id="hud-facing" class="compass-dir">Hướng Bắc (0°)</div>
+        <div class="compass-sub">A/← Trái • D/→ Phải</div>
+      </div>
+
+      <div class="hud-right-actions">
+        <button id="btn-toggle-flash" class="btn btn-sm" title="Phím F">🔦 BẬT</button>
+        <button id="btn-toggle-audio" class="btn btn-sm">🔊 BẬT</button>
+        <button id="btn-mod-menu" class="btn btn-sm btn-primary" style="display:none;">🛠 Mod</button>
+        <button id="btn-exit-game" class="btn btn-sm">Menu</button>
+      </div>
+    </div>
+
+    <div id="monster-warning-banner" class="monster-warning-banner"></div>
+
+    <div id="spectate-bar" class="spectate-bar">
+      <span id="spectate-target-label">👁 Góc nhìn thứ 3: Đang theo dõi...</span>
+      <button id="btn-spectate-next" class="btn btn-sm btn-primary">Đổi người (Q)</button>
+      <button id="btn-spectate-guiding" class="btn btn-sm">Guiding Light</button>
+    </div>
+
+    <div class="crosshair"></div>
+    <div id="prompt-banner" class="prompt-banner"></div>
+    <div id="toast-msg" class="toast-msg"></div>
+
+    <div class="hud-bottom">
+      <div class="bars-compact">
+        <div class="bar-row">
+          <div class="bar-label"><span>HP</span><span id="hud-hp-text">100/100</span></div>
+          <div class="bar-track"><div id="hud-hp-bar" class="bar-fill-hp"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label"><span>Stamina</span><span id="hud-st-text">100%</span></div>
+          <div class="bar-track"><div id="hud-st-bar" class="bar-fill-st"></div></div>
+        </div>
+      </div>
+
+      <div id="hotbar" class="hotbar"></div>
+
+      <div class="craft-quick-compact">
+        <button class="btn btn-sm" onclick="craftItem('axe', 35)">🔨 Rìu (35G)</button>
+        <button class="btn btn-sm" onclick="craftItem('uv', 45)">⚡ UV (45G)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ADMIN MOD MENU PANEL ================= -->
+  <div id="mod-menu-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <b style="color:#f0abfc;">ADMIN MOD MENU</b>
+      <button class="btn btn-sm" onclick="toggleModMenu(false)">✕</button>
+    </div>
+
+    <div class="mod-section">
+      <h4>Dịch chuyển phòng & Đồng đội</h4>
+      <div style="display:flex; gap:6px; margin-bottom:6px;">
+        <input id="mod-room-input" type="number" min="1" max="100" value="1" style="width:84px; padding:6px; border-radius:7px; background:#0b0816; color:#fff; border:1px solid rgba(255,255,255,0.2);" />
+        <button class="btn btn-sm btn-primary" style="flex:1;" onclick="adminTeleportRoom()">Tới phòng</button>
+      </div>
+      <div class="mod-grid">
+        <button class="btn btn-sm" onclick="adminTeleportTeammate()">Tới đồng đội</button>
+        <button class="btn btn-sm" onclick="adminUnlockAllDoors()">Mở khóa mọi cửa</button>
+      </div>
+    </div>
+
+    <div class="mod-section">
+      <h4>Chỉ số & Vật phẩm</h4>
+      <div class="mod-grid">
+        <button id="btn-mod-god" class="btn btn-sm" onclick="adminToggleGod()">Godmode: TẮT</button>
+        <button id="btn-mod-infst" class="btn btn-sm" onclick="adminToggleInfStamina()">Vô hạn Stamina: TẮT</button>
+        <button class="btn btn-sm" onclick="adminGiveStuff()">+250 Gold & Chìa</button>
+        <button class="btn btn-sm" onclick="adminGiveWeapons()">+Rìu & Đèn UV</button>
+      </div>
+    </div>
+
+    <div class="mod-section">
+      <h4>Triệu hồi / Xóa Quái vật</h4>
+      <div class="mod-grid">
+        <button class="btn btn-sm" onclick="adminSpawnMonster('rush')">Triệu hồi Rush</button>
+        <button class="btn btn-sm" onclick="adminSpawnMonster('ambush')">Triệu hồi Ambush</button>
+        <button class="btn btn-sm" onclick="adminSpawnMonster('screech')">Triệu hồi Screech</button>
+        <button class="btn btn-sm" onclick="adminSpawnMonster('eyes')">Triệu hồi Eyes</button>
+        <button class="btn btn-sm" onclick="adminSpawnMonster('seek')">Triệu hồi Seek</button>
+        <button class="btn btn-sm" onclick="adminSpawnMonster('figure')">Triệu hồi Figure</button>
+        <button class="btn btn-sm" style="grid-column: 1 / -1; border-color:#ef4444;" onclick="adminClearMonsters()">Xóa toàn bộ quái</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= HEARTBEAT MINIGAME ================= -->
+  <div id="heartbeat-modal">
+    <div class="hb-card">
+      <div style="font-size:18px; font-weight:800; color:#fca5a5;">FIGURE ĐANG ÁP SÁT TỦ!</div>
+      <div id="hb-instruction" style="font-size:13px; color:#fecaca; margin-top:6px;">
+        Bấm <b>CHUỘT TRÁI</b> khi vạch chạy vào <b>VÙNG XANH</b>!
+      </div>
+      <div class="hb-track">
+        <div class="hb-zone"></div>
+        <div id="hb-cursor" class="hb-cursor"></div>
+      </div>
+      <div id="hb-progress-text" style="font-size:13px; color:#86efac;">Nhịp thành công: 0 / 5</div>
+    </div>
+  </div>
+
+  <!-- ================= GUIDING LIGHT DEATH SCREEN ================= -->
+  <div id="guiding-light-screen">
+    <div class="gl-title">GUIDING LIGHT</div>
+    <div id="gl-cause" class="gl-cause">Bạn đã gục ngã trước bóng tối...</div>
+    <div id="gl-advice" class="gl-advice"></div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+      <button id="btn-gl-retry" class="btn btn-primary">Chơi lại từ đầu</button>
+      <button id="btn-gl-menu" class="btn">Về Menu chính</button>
+    </div>
+  </div>
+
+  <script>
+    const CUSTOM_ASSETS = {
+      images: {
+        wall: null, floor: null, ceiling: null,
+        rush: null, ambush: null, screech: null, eyes: null, seek: null, figure: null, timothy: null
+      },
+      audio: {
+        door: null, drawer: null, rush: null, ambush: null, screech: null, figure: null
+      }
+    };
+
+    const ADMIN_PASSWORD = '1900';
+    const TOTAL_ROOMS = 100;
+    const ROOM_LENGTH = 14;
+    const ROOM_WIDTH = 8.4;
+    const ROOM_HEIGHT = 4.4;
+    const DOOR_W = 2.2;
+    const DOOR_H = 3.1;
+
+    // ================= WEB AUDIO SYNTHESIZER =================
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.heartbeatTimer = 0;
+        this.noiseCache = new Map();
+      }
+
+      ensureCtx() {
+        if (!this.enabled) return null;
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+        return this.ctx;
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+      }
+
+      getNoiseBuffer(ctx, duration) {
+        const key = `${ctx.sampleRate}_${duration.toFixed(2)}`;
+        if (this.noiseCache.has(key)) return this.noiseCache.get(key);
+        const len = Math.max(1, Math.floor(ctx.sampleRate * duration));
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+        this.noiseCache.set(key, buf);
+        return buf;
+      }
+
+      playTone(freq, endFreq, duration, type = 'sine', gainVal = 0.14) {
+        const ctx = this.ensureCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        if (endFreq) osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
+        gain.gain.setValueAtTime(gainVal, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+
+      playNoise(duration, filterFreq = 900, gainVal = 0.12) {
+        const ctx = this.ensureCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const src = ctx.createBufferSource();
+        src.buffer = this.getNoiseBuffer(ctx, duration);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(filterFreq, now);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(gainVal, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(now);
+        src.stop(now + duration);
+      }
+
+      footstep(crouching) {
+        if (crouching) return;
+        this.playNoise(0.05, 420, 0.04);
+        this.playTone(115, 55, 0.05, 'triangle', 0.045);
+      }
+
+      doorOpen(locked = false) {
+        if (locked) {
+          this.playTone(180, 120, 0.08, 'square', 0.1);
+          setTimeout(() => this.playTone(150, 95, 0.08, 'square', 0.1), 90);
+          return;
+        }
+        this.playTone(160, 260, 0.2, 'sawtooth', 0.08);
+        this.playNoise(0.16, 650, 0.06);
+      }
+
+      drawerSlide() {
+        this.playNoise(0.2, 520, 0.07);
+        this.playTone(140, 210, 0.16, 'triangle', 0.06);
+      }
+
+      lightFlicker() {
+        this.playNoise(0.12, 2400, 0.1);
+        this.playTone(62, 58, 0.14, 'sawtooth', 0.07);
+      }
+
+      rushRoar() {
+        this.playNoise(1.0, 780, 0.2);
+        this.playTone(190, 68, 0.95, 'sawtooth', 0.18);
+      }
+
+      ambushShriek() {
+        this.playNoise(1.1, 1650, 0.22);
+        this.playTone(460, 130, 0.95, 'sawtooth', 0.18);
+      }
+
+      screechPsst() {
+        this.playNoise(0.24, 3600, 0.2);
+      }
+
+      figureRoar() {
+        this.playTone(110, 42, 0.75, 'sawtooth', 0.2);
+        this.playNoise(0.6, 320, 0.16);
+      }
+
+      crucifixSeal() {
+        this.playTone(520, 1040, 0.4, 'sine', 0.2);
+        this.playTone(780, 1560, 0.48, 'triangle', 0.14);
+      }
+
+      weaponSwing(isUv = false) {
+        if (isUv) {
+          this.playTone(880, 260, 0.2, 'sine', 0.16);
+          this.playNoise(0.14, 2800, 0.1);
+        } else {
+          this.playNoise(0.12, 950, 0.14);
+          this.playTone(220, 75, 0.12, 'triangle', 0.14);
+        }
+      }
+
+      updateHeartbeat(dt, active) {
+        if (!active) {
+          this.heartbeatTimer = 0;
+          return;
+        }
+        this.heartbeatTimer += dt;
+        if (this.heartbeatTimer >= 0.82) {
+          this.heartbeatTimer = 0;
+          this.playTone(76, 44, 0.11, 'sine', 0.2);
+          setTimeout(() => this.playTone(68, 38, 0.12, 'sine', 0.16), 160);
+        }
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // ================= PROCEDURAL TEXTURES & CACHE =================
+    function makeCanvas(w, h) {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      return c;
+    }
+
+    function createWallTexture(darkMode = false) {
+      const c = makeCanvas(256, 256);
+      const g = c.getContext('2d');
+      g.fillStyle = darkMode ? '#140f24' : '#2a1f3d';
+      g.fillRect(0, 0, 256, 256);
+      g.strokeStyle = darkMode ? 'rgba(139,92,246,0.14)' : 'rgba(216,180,254,0.18)';
+      g.lineWidth = 2;
+      for (let x = 16; x < 256; x += 32) {
+        g.beginPath();
+        g.moveTo(x, 0);
+        g.lineTo(x, 256);
+        g.stroke();
+      }
+      g.strokeRect(12, 30, 232, 190);
+      g.fillStyle = darkMode ? '#0b0814' : '#181124';
+      g.fillRect(0, 228, 256, 28);
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    function createFloorTexture() {
+      const c = makeCanvas(256, 256);
+      const g = c.getContext('2d');
+      g.fillStyle = '#241714';
+      g.fillRect(0, 0, 256, 256);
+      g.fillStyle = '#3b1528';
+      g.fillRect(74, 0, 108, 256);
+      g.strokeStyle = '#c084fc';
+      g.lineWidth = 3;
+      g.strokeRect(78, 0, 100, 256);
+      g.strokeStyle = 'rgba(0,0,0,0.45)';
+      g.lineWidth = 1.5;
+      for (let y = 0; y < 256; y += 16) {
+        g.beginPath();
+        g.moveTo(0, y);
+        g.lineTo(256, y);
+        g.stroke();
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 2);
+      return tex;
+    }
+
+    function createCeilingTexture() {
+      const c = makeCanvas(256, 256);
+      const g = c.getContext('2d');
+      g.fillStyle = '#151221';
+      g.fillRect(0, 0, 256, 256);
+      g.strokeStyle = 'rgba(255,255,255,0.08)';
+      g.lineWidth = 2;
+      g.strokeRect(8, 8, 240, 240);
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 2);
+      return tex;
+    }
+
+    const doorTexCache = new Map();
+    function getDoorTexture(roomNum, locked = false, isExit = false) {
+      const key = `${roomNum}_${locked ? 1 : 0}_${isExit ? 1 : 0}`;
+      if (doorTexCache.has(key)) return doorTexCache.get(key);
+
+      const c = makeCanvas(192, 288);
+      const g = c.getContext('2d');
+      g.fillStyle = isExit ? '#1e3a5f' : (locked ? '#4a1924' : '#4b2c1d');
+      g.fillRect(0, 0, 192, 288);
+
+      g.strokeStyle = locked ? '#fb7185' : '#d6a87c';
+      g.lineWidth = 6;
+      g.strokeRect(12, 12, 168, 264);
+      g.strokeRect(26, 30, 140, 96);
+      g.strokeRect(26, 144, 140, 108);
+
+      g.fillStyle = '#0f172a';
+      g.fillRect(54, 38, 84, 34);
+      g.strokeStyle = '#facc15';
+      g.lineWidth = 2;
+      g.strokeRect(54, 38, 84, 34);
+
+      g.fillStyle = '#fef08a';
+      g.font = 'bold 20px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(String(roomNum).padStart(4, '0'), 96, 55);
+
+      if (locked) {
+        g.fillStyle = '#ef4444';
+        g.beginPath();
+        g.arc(96, 192, 16, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#fff';
+        g.font = 'bold 15px sans-serif';
+        g.fillText('🔒', 96, 193);
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      doorTexCache.set(key, tex);
+      return tex;
+    }
+
+    function createMonsterTexture(type) {
+      const c = makeCanvas(192, 192);
+      const g = c.getContext('2d');
+      g.clearRect(0, 0, 192, 192);
+
+      if (type === 'rush') {
+        g.fillStyle = '#07070b';
+        g.beginPath();
+        g.ellipse(96, 96, 64, 76, 0, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#f8fafc';
+        g.beginPath();
+        g.ellipse(94, 93, 33, 39, 0.12, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#09090b';
+        g.beginPath();
+        g.arc(81, 84, 8, 0, Math.PI * 2);
+        g.arc(108, 87, 7, 0, Math.PI * 2);
+        g.ellipse(94, 110, 13, 18, 0, 0, Math.PI * 2);
+        g.fill();
+      } else if (type === 'ambush') {
+        g.fillStyle = '#064e3b';
+        g.beginPath();
+        g.arc(96, 96, 68, 0, Math.PI * 2);
+        g.fill();
+        g.strokeStyle = '#34d399';
+        g.lineWidth = 4;
+        g.stroke();
+        g.fillStyle = '#ecfdf5';
+        for (let i = 0; i < 7; i++) {
+          const ang = (i / 7) * Math.PI * 2;
+          g.beginPath();
+          g.arc(96 + Math.cos(ang) * 32, 96 + Math.sin(ang) * 32, 10, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = '#022c22';
+          g.beginPath();
+          g.arc(96 + Math.cos(ang) * 32, 96 + Math.sin(ang) * 32, 4.5, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = '#ecfdf5';
+        }
+      } else if (type === 'screech') {
+        g.fillStyle = '#09090b';
+        g.beginPath();
+        g.arc(96, 100, 46, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#ef4444';
+        g.beginPath();
+        g.arc(80, 93, 8, 0, Math.PI * 2);
+        g.arc(112, 93, 8, 0, Math.PI * 2);
+        g.ellipse(96, 114, 15, 10, 0, 0, Math.PI * 2);
+        g.fill();
+      } else if (type === 'eyes') {
+        const grad = g.createRadialGradient(96, 96, 8, 96, 96, 88);
+        grad.addColorStop(0, '#e879f9');
+        grad.addColorStop(0.55, '#9333ea');
+        grad.addColorStop(1, 'rgba(88,28,135,0)');
+        g.fillStyle = grad;
+        g.beginPath();
+        g.arc(96, 96, 88, 0, Math.PI * 2);
+        g.fill();
+        const coords = [[96, 96], [69, 73], [123, 76], [72, 120], [121, 118], [96, 58], [96, 135]];
+        coords.forEach(([x, y]) => {
+          g.fillStyle = '#fff';
+          g.beginPath();
+          g.arc(x, y, 11, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = '#3b0764';
+          g.beginPath();
+          g.arc(x, y, 5, 0, Math.PI * 2);
+          g.fill();
+        });
+      } else if (type === 'seek') {
+        g.fillStyle = '#050508';
+        g.fillRect(54, 18, 84, 158);
+        g.fillStyle = '#ef4444';
+        g.beginPath();
+        g.arc(96, 64, 16, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.arc(96, 64, 5, 0, Math.PI * 2);
+        g.fill();
+      } else if (type === 'figure') {
+        g.fillStyle = '#5c141c';
+        g.fillRect(50, 56, 92, 126);
+        g.fillStyle = '#f1f5f9';
+        g.beginPath();
+        g.ellipse(96, 46, 34, 27, 0, 0, Math.PI * 2);
+        g.fill();
+        g.strokeStyle = '#334155';
+        g.lineWidth = 3;
+        for (let r = -18; r <= 18; r += 9) {
+          g.beginPath();
+          g.moveTo(96 + r, 20);
+          g.lineTo(96 + r * 1.15, 72);
+          g.stroke();
+        }
+      } else if (type === 'timothy') {
+        g.fillStyle = '#3f1d1d';
+        g.beginPath();
+        g.arc(96, 96, 26, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      return new THREE.CanvasTexture(c);
+    }
+
+    function createNametagTexture(name, isHost = false) {
+      const c = makeCanvas(256, 64);
+      const g = c.getContext('2d');
+      g.fillStyle = 'rgba(10, 8, 20, 0.78)';
+      g.fillRect(12, 10, 232, 44);
+      g.strokeStyle = isHost ? '#e879f9' : '#38bdf8';
+      g.lineWidth = 3;
+      g.strokeRect(12, 10, 232, 44);
+      g.fillStyle = '#fff';
+      g.font = 'bold 22px sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(`${isHost ? '👑 ' : ''}${name}`, 128, 33);
+      return new THREE.CanvasTexture(c);
+    }
+
+    // ================= GAME STATE =================
+    const state = {
+      mode: 'menu', // 'menu' | 'lobby' | 'playing' | 'spectating' | 'dead'
+      isOnline: false,
+      socket: null,
+      lobbyRoom: null,
+      isAdmin: false,
+      godmode: false,
+      infStamina: false,
+      seed: 123456,
+      playerName: 'Khách_01',
+      currentRoomIndex: 1,
+      hp: 100,
+      maxHp: 100,
+      stamina: 100,
+      gold: 25,
+      keys: 0,
+      crouching: false,
+      hidingInCloset: null,
+      hideTimer: 0,
+      flashlightOn: true,
+      selectedSlot: 0,
+      hotbar: [
+        { id: 'lighter', name: 'Bật lửa', count: 1 },
+        { id: 'crucifix', name: 'Thánh giá', count: 0 },
+        { id: 'key', name: 'Chìa khóa', count: 0 },
+        { id: 'vitamins', name: 'Vitamins', count: 0 },
+        { id: 'axe', name: 'Rìu/Gậy Sắt', count: 0 },
+        { id: 'uv', name: 'Đèn UV', count: 0 }
+      ],
+      collectedBooks: new Set(),
+      monsters: [],
+      pendingSpawns: [], // { type, timer } — báo hiệu 10s trước khi Rush / Ambush tới
+      seekActive: false,
+      seekTriggeredRooms: new Set(),
+      figureActive: false,
+      lastDeathInfo: { killer: 'Bóng tối', advice: '' },
+      spectateIndex: 0,
+      heartbeat: {
+        active: false,
+        cursorPos: 0,
+        dir: 1,
+        hits: 0,
+        targetHits: 5,
+        nextExpectLeft: true
+      }
+    };
+
+    function syncKeySlot() {
+      const keySlot = state.hotbar.find((s) => s.id === 'key');
+      if (keySlot) keySlot.count = state.keys;
+    }
+
+    function showToast(msg, ms = 2000) {
+      const el = document.getElementById('toast-msg');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => el.classList.remove('show'), ms);
+    }
+
+    // ================= THREE.JS SETUP =================
+    const canvas = document.getElementById('game-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x090712);
+    scene.fog = new THREE.FogExp2(0x090712, 0.024);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 95);
+    camera.position.set(0, 1.65, -2.5);
+    camera.rotation.order = 'YXZ';
+    scene.add(camera);
+
+    const ambientLight = new THREE.AmbientLight(0x7c6aa3, 0.85);
+    scene.add(ambientLight);
+    const hemiLight = new THREE.HemisphereLight(0xb794f4, 0x2a1829, 0.7);
+    scene.add(hemiLight);
+
+    const flashlight = new THREE.SpotLight(0xfff4d6, 3.0, 24, Math.PI / 5.2, 0.45, 1.2);
+    flashlight.position.set(0.28, -0.22, -0.1);
+    const flashTarget = new THREE.Object3D();
+    flashTarget.position.set(0.1, -0.25, -10);
+    camera.add(flashlight);
+    camera.add(flashTarget);
+    flashlight.target = flashTarget;
+
+    const lighterLight = new THREE.PointLight(0xff9d3b, 0, 7, 1.8);
+    lighterLight.position.set(0.32, -0.25, -0.45);
+    camera.add(lighterLight);
+
+    const fpArmGroup = new THREE.Group();
+    fpArmGroup.position.set(0.34, -0.34, -0.45);
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xf1c29b, roughness: 0.7 });
+    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x4338ca, roughness: 0.7 });
+    const sleeveMesh = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 0.34), sleeveMat);
+    sleeveMesh.position.set(0, -0.05, 0.14);
+    const forearmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.11, 0.24), armMat);
+    forearmMesh.position.set(0, -0.02, -0.06);
+    fpArmGroup.add(sleeveMesh, forearmMesh);
+
+    const heldTorchMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.038, 0.22, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.35 })
+    );
+    heldTorchMesh.rotation.x = Math.PI / 2;
+    heldTorchMesh.position.set(0, 0.03, -0.2);
+    fpArmGroup.add(heldTorchMesh);
+
+    const heldAxeGroup = new THREE.Group();
+    heldAxeGroup.position.set(0, 0.04, -0.22);
+    heldAxeGroup.visible = false;
+    const axeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.45, 6), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+    axeHandle.rotation.x = Math.PI / 2.4;
+    const axeBlade = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.11, 0.03), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.75, roughness: 0.25 }));
+    axeBlade.position.set(0.05, 0.06, -0.16);
+    heldAxeGroup.add(axeHandle, axeBlade);
+    fpArmGroup.add(heldAxeGroup);
+
+    const heldUvMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.11, 0.26),
+      new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.7 })
+    );
+    heldUvMesh.position.set(0, 0.04, -0.2);
+    heldUvMesh.visible = false;
+    fpArmGroup.add(heldUvMesh);
+
+    camera.add(fpArmGroup);
+
+    const sharedGeo = {
+      floor: new THREE.PlaneGeometry(ROOM_WIDTH, ROOM_LENGTH),
+      ceil: new THREE.PlaneGeometry(ROOM_WIDTH, ROOM_LENGTH),
+      sideWall: new THREE.PlaneGeometry(ROOM_LENGTH, ROOM_HEIGHT),
+      backWall: new THREE.PlaneGeometry(ROOM_WIDTH, ROOM_HEIGHT),
+      frontSideWall: new THREE.PlaneGeometry((ROOM_WIDTH - DOOR_W) / 2, ROOM_HEIGHT),
+      frontTopWall: new THREE.PlaneGeometry(DOOR_W, ROOM_HEIGHT - DOOR_H),
+      doorFrameSide: new THREE.BoxGeometry(0.14, DOOR_H, 0.24),
+      doorFrameTop: new THREE.BoxGeometry(DOOR_W + 0.28, 0.14, 0.24),
+      doorLeaf: new THREE.BoxGeometry(DOOR_W - 0.12, DOOR_H - 0.08, 0.12),
+      cabBody: new THREE.BoxGeometry(0.95, 0.92, 0.72),
+      drawerBox: new THREE.BoxGeometry(0.82, 0.24, 0.66),
+      handle: new THREE.BoxGeometry(0.22, 0.04, 0.05),
+      closetBody: new THREE.BoxGeometry(1.15, 2.55, 0.85),
+      closetTrim: new THREE.BoxGeometry(1.2, 0.08, 0.9),
+      pillar: new THREE.CylinderGeometry(0.36, 0.42, ROOM_HEIGHT, 10),
+      table: new THREE.BoxGeometry(2.0, 0.68, 1.1),
+      bench: new THREE.BoxGeometry(1.7, 0.95, 0.9),
+      crate: new THREE.BoxGeometry(0.95, 0.95, 0.95),
+      book: new THREE.BoxGeometry(0.32, 0.42, 0.08)
+    };
+
+    const wallTexNormal = CUSTOM_ASSETS.images.wall ? new THREE.TextureLoader().load(CUSTOM_ASSETS.images.wall) : createWallTexture(false);
+    const wallTexDark = CUSTOM_ASSETS.images.wall ? new THREE.TextureLoader().load(CUSTOM_ASSETS.images.wall) : createWallTexture(true);
+    const floorTex = CUSTOM_ASSETS.images.floor ? new THREE.TextureLoader().load(CUSTOM_ASSETS.images.floor) : createFloorTexture();
+    const ceilingTex = CUSTOM_ASSETS.images.ceiling ? new THREE.TextureLoader().load(CUSTOM_ASSETS.images.ceiling) : createCeilingTexture();
+
+    const sharedMat = {
+      wallNormal: new THREE.MeshStandardMaterial({ map: wallTexNormal, roughness: 0.8, side: THREE.DoubleSide }),
+      wallDark: new THREE.MeshStandardMaterial({ map: wallTexDark, roughness: 0.8, side: THREE.DoubleSide }),
+      floor: new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.82, side: THREE.DoubleSide }),
+      ceil: new THREE.MeshStandardMaterial({ map: ceilingTex, roughness: 0.9, side: THREE.DoubleSide }),
+      doorFrame: new THREE.MeshStandardMaterial({ color: 0x26160e, roughness: 0.7 }),
+      cabBody: new THREE.MeshStandardMaterial({ color: 0x3b2316, roughness: 0.75 }),
+      drawerBox: new THREE.MeshStandardMaterial({ color: 0x5c3724, roughness: 0.6 }),
+      handle: new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.65, roughness: 0.25 }),
+      closetBody: new THREE.MeshStandardMaterial({ color: 0x2c1b12, roughness: 0.7 }),
+      closetTrim: new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.4 }),
+      pillar: new THREE.MeshStandardMaterial({ color: 0x3b3355, roughness: 0.65 }),
+      table: new THREE.MeshStandardMaterial({ color: 0x4c2a1a, roughness: 0.6 }),
+      bench: new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.4, roughness: 0.5 }),
+      crate: new THREE.MeshStandardMaterial({ color: 0x7c4a21, roughness: 0.8 }),
+      book: new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0ea5e9, emissiveIntensity: 1.3 })
+    };
+
+    const monsterTextures = {
+      rush: createMonsterTexture('rush'),
+      ambush: createMonsterTexture('ambush'),
+      screech: createMonsterTexture('screech'),
+      eyes: createMonsterTexture('eyes'),
+      seek: createMonsterTexture('seek'),
+      figure: createMonsterTexture('figure'),
+      timothy: createMonsterTexture('timothy')
+    };
+
+    // ================= ROOM & WORLD BUILDER =================
+    const rooms = new Map();
+    const interactables = [];
+    const colliders = [];
+    const libraryBooks = [];
+    const remotePlayers = new Map();
+
+    function seededRandom(seed) {
+      let s = seed % 2147483647;
+      if (s <= 0) s += 2147483646;
+      return () => {
+        s = (s * 16807) % 2147483647;
+        return (s - 1) / 2147483646;
+      };
+    }
+
+    function getRoomType(index) {
+      if (index === 50) return { key: 'library', label: 'Thư viện (Phòng 50)' };
+      if (index === 100) return { key: 'exit', label: 'Cửa thoát hiểm (Phòng 100)' };
+      if (index % 10 === 0) return { key: 'workshop', label: 'Phòng công trình & kho' };
+      if (index % 7 === 0) return { key: 'dark', label: 'Phòng tối' };
+      if (index % 5 === 0) return { key: 'locked', label: 'Phòng cửa khóa' };
+      if (index % 4 === 0) return { key: 'pillars', label: 'Hành lang cột trụ' };
+      if (index % 3 === 0) return { key: 'lounge', label: 'Sảnh ghế & bàn' };
+      return { key: 'standard', label: 'Sảnh khách sạn' };
+    }
+
+    function addCollider(minX, maxX, minZ, maxZ, roomIndex) {
+      colliders.push({ minX, maxX, minZ, maxZ, roomIndex });
+    }
+
+    function buildRoom(index) {
+      if (index < 1 || index > TOTAL_ROOMS || rooms.has(index)) return rooms.get(index);
+
+      const rng = seededRandom(state.seed + index * 7919);
+      const typeInfo = getRoomType(index);
+      const zStart = -(index - 1) * ROOM_LENGTH;
+      const zEnd = -index * ROOM_LENGTH;
+      const zCenter = (zStart + zEnd) / 2;
+
+      const group = new THREE.Group();
+      group.userData.roomIndex = index;
+
+      const isDark = typeInfo.key === 'dark' || typeInfo.key === 'library';
+      const wallMat = isDark ? sharedMat.wallDark : sharedMat.wallNormal;
+
+      const floor = new THREE.Mesh(sharedGeo.floor, sharedMat.floor);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(0, 0, zCenter);
+      group.add(floor);
+
+      const ceil = new THREE.Mesh(sharedGeo.ceil, sharedMat.ceil);
+      ceil.rotation.x = Math.PI / 2;
+      ceil.position.set(0, ROOM_HEIGHT, zCenter);
+      group.add(ceil);
+
+      const leftWall = new THREE.Mesh(sharedGeo.sideWall, wallMat);
+      leftWall.rotation.y = Math.PI / 2;
+      leftWall.position.set(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, zCenter);
+      group.add(leftWall);
+
+      const rightWall = new THREE.Mesh(sharedGeo.sideWall, wallMat);
+      rightWall.rotation.y = -Math.PI / 2;
+      rightWall.position.set(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, zCenter);
+      group.add(rightWall);
+
+      const backWall = new THREE.Mesh(sharedGeo.backWall, wallMat);
+      backWall.position.set(0, ROOM_HEIGHT / 2, zStart);
+      group.add(backWall);
+
+      const sideW = (ROOM_WIDTH - DOOR_W) / 2;
+      const frontLeft = new THREE.Mesh(sharedGeo.frontSideWall, wallMat);
+      frontLeft.position.set(-DOOR_W / 2 - sideW / 2, ROOM_HEIGHT / 2, zEnd);
+      group.add(frontLeft);
+
+      const frontRight = new THREE.Mesh(sharedGeo.frontSideWall, wallMat);
+      frontRight.position.set(DOOR_W / 2 + sideW / 2, ROOM_HEIGHT / 2, zEnd);
+      group.add(frontRight);
+
+      const frontTop = new THREE.Mesh(sharedGeo.frontTopWall, wallMat);
+      frontTop.position.set(0, DOOR_H + (ROOM_HEIGHT - DOOR_H) / 2, zEnd);
+      group.add(frontTop);
+
+      addCollider(-ROOM_WIDTH - 2, -ROOM_WIDTH / 2 + 0.25, zEnd - 0.5, zStart + 0.5, index);
+      addCollider(ROOM_WIDTH / 2 - 0.25, ROOM_WIDTH + 2, zEnd - 0.5, zStart + 0.5, index);
+      addCollider(-ROOM_WIDTH / 2, -DOOR_W / 2, zEnd - 0.25, zEnd + 0.25, index);
+      addCollider(DOOR_W / 2, ROOM_WIDTH / 2, zEnd - 0.25, zEnd + 0.25, index);
+
+      // Khung cửa cố định gắn sát tường trước tại zEnd
+      const frameLeft = new THREE.Mesh(sharedGeo.doorFrameSide, sharedMat.doorFrame);
+      frameLeft.position.set(-DOOR_W / 2, DOOR_H / 2, zEnd);
+      const frameRight = new THREE.Mesh(sharedGeo.doorFrameSide, sharedMat.doorFrame);
+      frameRight.position.set(DOOR_W / 2, DOOR_H / 2, zEnd);
+      const frameTop = new THREE.Mesh(sharedGeo.doorFrameTop, sharedMat.doorFrame);
+      frameTop.position.set(0, DOOR_H + 0.05, zEnd);
+      group.add(frameLeft, frameRight, frameTop);
+
+      // Cánh cửa gắn bản lề ở mép trái ô cửa (-DOOR_W / 2 + 0.06, 0, zEnd)
+      const isLocked = typeInfo.key === 'locked';
+      const doorPivot = new THREE.Group();
+      doorPivot.position.set(-DOOR_W / 2 + 0.06, 0, zEnd);
+
+      const doorTex = getDoorTexture(index, isLocked, index === TOTAL_ROOMS);
+      const doorMat = new THREE.MeshStandardMaterial({ map: doorTex, roughness: 0.55 });
+      const doorMesh = new THREE.Mesh(sharedGeo.doorLeaf, doorMat);
+      doorMesh.position.set((DOOR_W - 0.12) / 2, (DOOR_H - 0.08) / 2 + 0.02, 0);
+      doorPivot.add(doorMesh);
+      group.add(doorPivot);
+
+      const doorCollider = {
+        minX: -DOOR_W / 2 + 0.12,
+        maxX: DOOR_W / 2 - 0.12,
+        minZ: zEnd - 0.22,
+        maxZ: zEnd + 0.22,
+        roomIndex: index
+      };
+      colliders.push(doorCollider);
+
+      const doorObj = {
+        id: `door_${index}`,
+        type: 'door',
+        roomIndex: index,
+        locked: isLocked,
+        opened: false,
+        openProgress: 0,
+        pivot: doorPivot,
+        mesh: doorMesh,
+        collider: doorCollider,
+        pos: new THREE.Vector3(0, 1.45, zEnd + 0.45)
+      };
+      interactables.push(doorObj);
+
+      const baseIntensity = isDark ? 0.35 : 1.5;
+      const pLight = new THREE.PointLight(isDark ? 0x7c3aed : 0xffdf9e, baseIntensity, 16, 1.4);
+      pLight.position.set(0, ROOM_HEIGHT - 0.45, zCenter);
+      group.add(pLight);
+
+      const drawerCount = typeInfo.key === 'lounge' || typeInfo.key === 'workshop' ? 3 : 2;
+      for (let d = 0; d < drawerCount; d++) {
+        const side = d % 2 === 0 ? -1 : 1;
+        const zPos = zStart - 2.6 - d * 3.8;
+        const xPos = side * (ROOM_WIDTH / 2 - 0.52);
+
+        const cabGroup = new THREE.Group();
+        cabGroup.position.set(xPos, 0, zPos);
+        cabGroup.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+
+        const cabinetBody = new THREE.Mesh(sharedGeo.cabBody, sharedMat.cabBody);
+        cabinetBody.position.y = 0.46;
+        cabGroup.add(cabinetBody);
+
+        const drawerSlideGroup = new THREE.Group();
+        drawerSlideGroup.position.set(0, 0.62, 0.04);
+
+        const drawerBox = new THREE.Mesh(sharedGeo.drawerBox, sharedMat.drawerBox);
+        drawerBox.position.set(0, 0, 0.04);
+        const handleMesh = new THREE.Mesh(sharedGeo.handle, sharedMat.handle);
+        handleMesh.position.set(0, 0, 0.39);
+        drawerSlideGroup.add(drawerBox, handleMesh);
+        cabGroup.add(drawerSlideGroup);
+        group.add(cabGroup);
+
+        let loot = 'gold';
+        if (isLocked && d === 0) {
+          loot = 'key';
+        } else {
+          const r = rng();
+          if (r < 0.24) loot = 'key';
+          else if (r < 0.44) loot = 'vitamins';
+          else if (r < 0.54) loot = 'crucifix';
+          else if (r < 0.88) loot = 'gold';
+          else loot = 'timothy';
+        }
+
+        interactables.push({
+          id: `drawer_${index}_${d}`,
+          type: 'drawer',
+          roomIndex: index,
+          opened: false,
+          slideProgress: 0,
+          slideGroup: drawerSlideGroup,
+          loot,
+          goldAmount: Math.floor(12 + rng() * 22),
+          pos: new THREE.Vector3(xPos - side * 0.45, 0.85, zPos)
+        });
+      }
+
+      if (index > 1 && getRoomType(index - 1).key === 'locked') {
+        const prevRoomDrawers = interactables.filter((x) => x.type === 'drawer' && x.roomIndex === index);
+        if (prevRoomDrawers.length > 0 && prevRoomDrawers[0].loot !== 'key') {
+          prevRoomDrawers[0].loot = 'key';
+        }
+      }
+
+      const closetPositions = [
+        { x: -ROOM_WIDTH / 2 + 0.46, z: zStart - 6.8, rotY: Math.PI / 2 },
+        { x: ROOM_WIDTH / 2 - 0.46, z: zStart - 10.6, rotY: -Math.PI / 2 }
+      ];
+      closetPositions.forEach((cp, cIdx) => {
+        const cGroup = new THREE.Group();
+        cGroup.position.set(cp.x, 0, cp.z);
+        cGroup.rotation.y = cp.rotY;
+
+        const body = new THREE.Mesh(sharedGeo.closetBody, sharedMat.closetBody);
+        body.position.y = 1.275;
+        const trim = new THREE.Mesh(sharedGeo.closetTrim, sharedMat.closetTrim);
+        trim.position.y = 2.52;
+        cGroup.add(body, trim);
+        group.add(cGroup);
+
+        interactables.push({
+          id: `closet_${index}_${cIdx}`,
+          type: 'closet',
+          roomIndex: index,
+          pos: new THREE.Vector3(cp.x + (cp.x < 0 ? 0.65 : -0.65), 1.3, cp.z),
+          hidePos: new THREE.Vector3(cp.x + (cp.x < 0 ? 0.08 : -0.08), 1.45, cp.z)
+        });
+      });
+
+      if (typeInfo.key === 'pillars') {
+        [-2.2, 2.2].forEach((px) => {
+          [-4.2, -9.8].forEach((pzOffset) => {
+            const pz = zStart + pzOffset;
+            const col = new THREE.Mesh(sharedGeo.pillar, sharedMat.pillar);
+            col.position.set(px, ROOM_HEIGHT / 2, pz);
+            group.add(col);
+            addCollider(px - 0.42, px + 0.42, pz - 0.42, pz + 0.42, index);
+          });
+        });
+      }
+
+      if (typeInfo.key === 'lounge') {
+        const table = new THREE.Mesh(sharedGeo.table, sharedMat.table);
+        table.position.set(0, 0.34, zCenter);
+        group.add(table);
+        addCollider(-1.05, 1.05, zCenter - 0.58, zCenter + 0.58, index);
+      }
+
+      if (typeInfo.key === 'workshop') {
+        const benchZ = zStart - 5.5;
+        const benchX = -1.6;
+        const bench = new THREE.Mesh(sharedGeo.bench, sharedMat.bench);
+        bench.position.set(benchX, 0.475, benchZ);
+        group.add(bench);
+        addCollider(benchX - 0.88, benchX + 0.88, benchZ - 0.48, benchZ + 0.48, index);
+
+        interactables.push({
+          id: `workbench_${index}`,
+          type: 'workbench',
+          roomIndex: index,
+          pos: new THREE.Vector3(benchX, 1.0, benchZ + 0.75)
+        });
+
+        const crateX = 1.9;
+        const crateZ = zStart - 8.2;
+        const crate = new THREE.Mesh(sharedGeo.crate, sharedMat.crate);
+        crate.position.set(crateX, 0.475, crateZ);
+        group.add(crate);
+        addCollider(crateX - 0.5, crateX + 0.5, crateZ - 0.5, crateZ + 0.5, index);
+
+        interactables.push({
+          id: `crate_${index}`,
+          type: 'crate',
+          roomIndex: index,
+          opened: false,
+          mesh: crate,
+          goldAmount: 25,
+          pos: new THREE.Vector3(crateX, 0.8, crateZ)
+        });
+      }
+
+      if (typeInfo.key === 'library') {
+        const bookCoords = [
+          [-2.8, 1.3, zStart - 2.5],
+          [2.8, 1.4, zStart - 4.2],
+          [-2.6, 1.2, zStart - 7.0],
+          [2.7, 1.35, zStart - 9.8],
+          [0.0, 1.1, zStart - 11.6]
+        ];
+        bookCoords.forEach(([bx, by, bz], bIdx) => {
+          const bookId = `lib_book_${bIdx}`;
+          if (state.collectedBooks.has(bookId)) return;
+          const bookMesh = new THREE.Mesh(sharedGeo.book, sharedMat.book);
+          bookMesh.position.set(bx, by, bz);
+          group.add(bookMesh);
+
+          const bookObj = {
+            id: bookId,
+            type: 'book',
+            roomIndex: index,
+            collected: false,
+            mesh: bookMesh,
+            pos: new THREE.Vector3(bx, by, bz)
+          };
+          libraryBooks.push(bookObj);
+          interactables.push(bookObj);
+        });
+      }
+
+      scene.add(group);
+      const rec = {
+        index,
+        typeInfo,
+        group,
+        door: doorObj,
+        light: pLight,
+        baseLightIntensity: baseIntensity,
+        zStart,
+        zEnd
+      };
+      rooms.set(index, rec);
+      updateRoomLightCulling(state.currentRoomIndex);
+      return rec;
+    }
+
+    function updateRoomLightCulling(centerIdx) {
+      for (const [idx, rec] of rooms.entries()) {
+        if (!rec.light) continue;
+        rec.light.intensity = Math.abs(idx - centerIdx) <= 1 ? rec.baseLightIntensity : 0;
+      }
+    }
+
+    function updateLoadedRooms(centerRoomIdx) {
+      const minKeep = Math.max(1, centerRoomIdx - 1);
+      const maxKeep = Math.min(TOTAL_ROOMS, centerRoomIdx + 2);
+
+      for (let i = minKeep; i <= maxKeep; i++) {
+        buildRoom(i);
+      }
+
+      for (const [idx, rec] of rooms.entries()) {
+        if (idx < minKeep - 1 || idx > maxKeep + 1) {
+          scene.remove(rec.group);
+          rooms.delete(idx);
+          for (let k = interactables.length - 1; k >= 0; k--) {
+            if (interactables[k].roomIndex === idx) interactables.splice(k, 1);
+          }
+          for (let c = colliders.length - 1; c >= 0; c--) {
+            if (colliders[c].roomIndex === idx) colliders.splice(c, 1);
+          }
+        }
+      }
+      updateRoomLightCulling(centerRoomIdx);
+    }
+
+    function resetWorld() {
+      for (const rec of rooms.values()) {
+        scene.remove(rec.group);
+      }
+      rooms.clear();
+      interactables.length = 0;
+      colliders.length = 0;
+      libraryBooks.length = 0;
+
+      for (const m of state.monsters) {
+        if (m.sprite) scene.remove(m.sprite);
+      }
+      state.monsters = [];
+      state.pendingSpawns = [];
+      document.getElementById('monster-warning-banner').style.display = 'none';
+      document.getElementById('spectate-bar').classList.remove('active');
+
+      state.seekActive = false;
+      state.seekTriggeredRooms.clear();
+      state.figureActive = false;
+      state.collectedBooks.clear();
+      state.currentRoomIndex = 1;
+      state.hp = state.maxHp;
+      state.stamina = 100;
+      state.gold = 25;
+      state.keys = 0;
+      state.crouching = false;
+      state.hidingInCloset = null;
+      state.hideTimer = 0;
+      state.hotbar = [
+        { id: 'lighter', name: 'Bật lửa', count: 1 },
+        { id: 'crucifix', name: 'Thánh giá', count: 0 },
+        { id: 'key', name: 'Chìa khóa', count: 0 },
+        { id: 'vitamins', name: 'Vitamins', count: 0 },
+        { id: 'axe', name: 'Rìu/Gậy Sắt', count: 0 },
+        { id: 'uv', name: 'Đèn UV', count: 0 }
+      ];
+      state.selectedSlot = 0;
+      fpArmGroup.visible = true;
+      camera.position.set(0, 1.65, -2.2);
+      camera.rotation.set(0, 0, 0);
+      updateLoadedRooms(1);
+      renderHotbar();
+      updateHud();
+    }
+
+    // ================= REMOTE ONLINE PLAYER AVATARS =================
+    function ensureRemotePlayerAvatar(p) {
+      if (p.id === (state.socket && state.socket.id)) return;
+      let av = remotePlayers.get(p.id);
+      if (!av) {
+        const root = new THREE.Group();
+        const skinMat = new THREE.MeshStandardMaterial({ color: p.skin?.skinTone || 0xf1c29b, roughness: 0.7 });
+        const shirtMat = new THREE.MeshStandardMaterial({ color: p.skin?.shirt || 0xec4899, roughness: 0.7 });
+        const hairMat = new THREE.MeshStandardMaterial({ color: p.skin?.hair || 0x18181b, roughness: 0.8 });
+        const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.36, 0.36), skinMat);
+        head.position.y = 1.52;
+        const hair = new THREE.Mesh(new THREE.BoxGeometry(0.39, 0.14, 0.39), hairMat);
+        hair.position.y = 1.72;
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.62, 0.24), shirtMat);
+        torso.position.y = 1.02;
+
+        const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.56, 0.16), shirtMat);
+        leftArm.position.set(-0.32, 1.04, 0);
+        const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.56, 0.16), shirtMat);
+        rightArm.position.set(0.32, 1.04, 0);
+
+        const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.2), pantsMat);
+        leftLeg.position.set(-0.12, 0.35, 0);
+        const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.2), pantsMat);
+        rightLeg.position.set(0.12, 0.35, 0);
+
+        const tagTex = createNametagTexture(p.name, p.id === state.lobbyRoom?.hostId);
+        const tagSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tagTex, transparent: true }));
+        tagSprite.position.set(0, 2.05, 0);
+        tagSprite.scale.set(1.25, 0.32, 1);
+
+        root.add(head, hair, torso, leftArm, rightArm, leftLeg, rightLeg, tagSprite);
+        scene.add(root);
+
+        av = { id: p.id, name: p.name, root, head, torso, leftArm, rightArm, leftLeg, rightLeg, walkPhase: 0, yaw: 0 };
+        remotePlayers.set(p.id, av);
+      }
+
+      av.name = p.name || av.name;
+      if (p.pos) {
+        const prevX = av.root.position.x;
+        const prevZ = av.root.position.z;
+        av.root.position.set(p.pos.x, p.hiding ? -5 : 0, p.pos.z);
+        const moved = Math.hypot(p.pos.x - prevX, p.pos.z - prevZ);
+        if (moved > 0.005) {
+          av.walkPhase += moved * 6;
+          av.leftLeg.rotation.x = Math.sin(av.walkPhase) * 0.55;
+          av.rightLeg.rotation.x = -Math.sin(av.walkPhase) * 0.55;
+          av.leftArm.rotation.x = -Math.sin(av.walkPhase) * 0.45;
+          av.rightArm.rotation.x = Math.sin(av.walkPhase) * 0.45;
+        }
+      }
+      if (typeof p.yaw === 'number') {
+        av.yaw = p.yaw;
+        av.root.rotation.y = p.yaw;
+      }
+      av.torso.scale.y = p.crouching ? 0.65 : 1.0;
+      av.head.position.y = p.crouching ? 1.08 : 1.52;
+    }
+
+    function clearRemotePlayers() {
+      for (const av of remotePlayers.values()) scene.remove(av.root);
+      remotePlayers.clear();
+    }
+
+    // ================= 10s WARNING + MONSTER SYSTEM =================
+    function flickerRoomLights(roomIdx, duration = 1.2) {
+      const rec = rooms.get(roomIdx);
+      if (!rec || !rec.light) return;
+      sound.lightFlicker();
+      const orig = rec.baseLightIntensity;
+      let elapsed = 0;
+      const iv = setInterval(() => {
+        elapsed += 0.1;
+        rec.light.intensity = Math.random() < 0.5 ? 0.05 : orig;
+        if (elapsed >= duration) {
+          clearInterval(iv);
+          rec.light.intensity = orig;
+        }
+      }, 100);
+    }
+
+    function scheduleMonsterWith10sWarning(type) {
+      if (type === 'rush' || type === 'ambush') {
+        // Không xếp trùng 2 cảnh báo cùng loại
+        if (state.pendingSpawns.some((s) => s.type === type)) return;
+        state.pendingSpawns.push({ type, timer: 10.0 });
+        flickerRoomLights(state.currentRoomIndex, 1.4);
+        sound.lightFlicker();
+        updateWarningBanner();
+      } else {
+        spawnMonsterNow(type);
+      }
+    }
+
+    function updateWarningBanner() {
+      const banner = document.getElementById('monster-warning-banner');
+      if (state.pendingSpawns.length === 0) {
+        banner.style.display = 'none';
+        return;
+      }
+      const next = state.pendingSpawns[0];
+      const label = next.type === 'ambush' ? 'AMBUSH' : 'RUSH';
+      banner.textContent = `⚠ CẢNH BÁO: ${label} SẮP TỚI TRONG ${Math.max(0, next.timer).toFixed(1)}s — TÌM TỦ TRỐN (E)!`;
+      banner.style.display = 'block';
+    }
+
+    function updatePendingSpawns(dt) {
+      if (state.mode !== 'playing' || state.pendingSpawns.length === 0) {
+        document.getElementById('monster-warning-banner').style.display = 'none';
+        return;
+      }
+
+      for (let i = state.pendingSpawns.length - 1; i >= 0; i--) {
+        const sp = state.pendingSpawns[i];
+        sp.timer -= dt;
+        if (sp.timer <= 0) {
+          state.pendingSpawns.splice(i, 1);
+          spawnMonsterNow(sp.type);
+        }
+      }
+      updateWarningBanner();
+    }
+
+    function spawnMonsterNow(type, opts = {}) {
+      const tex = monsterTextures[type];
+      if (!tex) return;
+
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+      const sprite = new THREE.Sprite(mat);
+      const scale = type === 'seek' || type === 'figure' ? 2.6 : (type === 'screech' ? 1.15 : 2.05);
+      sprite.scale.set(scale, scale, 1);
+
+      const pz = camera.position.z;
+      const px = camera.position.x;
+
+      const m = {
+        id: `mon_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        type,
+        sprite,
+        pos: new THREE.Vector3(px, 1.55, pz + 14),
+        velZ: -26,
+        reboundsLeft: type === 'ambush' ? (2 + Math.floor(Math.random() * 5)) : 0,
+        pauseTimer: 0,
+        screechTimer: 5.0,
+        stunTimer: 0,
+        slowTimer: 0,
+        figureWaypoints: [
+          new THREE.Vector3(-2.2, 1.45, pz - 2),
+          new THREE.Vector3(2.2, 1.45, pz - 6),
+          new THREE.Vector3(0.0, 1.45, pz - 10),
+          new THREE.Vector3(-2.4, 1.45, pz - 12)
+        ],
+        wpIndex: 0,
+        ...opts
+      };
+
+      if (type === 'rush' || type === 'ambush') {
+        m.pos.set(0, 1.55, pz + 16);
+        m.velZ = type === 'rush' ? -29 : -24;
+        flickerRoomLights(state.currentRoomIndex, 1.1);
+        if (type === 'rush') sound.rushRoar();
+        else sound.ambushShriek();
+      } else if (type === 'screech') {
+        const yaw = camera.rotation.y + Math.PI + (Math.random() - 0.5) * 0.7;
+        m.pos.set(px + Math.sin(yaw) * 1.9, 1.55, pz - Math.cos(yaw) * 1.9);
+        m.screechTimer = 5.2;
+        sound.screechPsst();
+        showToast('Psst... Quái vật sau lưng trong bóng tối!');
+      } else if (type === 'eyes') {
+        m.pos.set((Math.random() - 0.5) * 3.2, 1.65, pz - 7.5);
+        showToast('Đừng nhìn thẳng vào EYES!');
+      } else if (type === 'seek') {
+        m.pos.set(0, 1.75, pz + 14);
+        state.seekActive = true;
+        sound.rushRoar();
+        showToast('SEEK đang rượt đuổi! Chạy nhanh (Shift) và mở cửa!');
+      } else if (type === 'figure') {
+        m.pos.set(-2.2, 1.45, pz - 5);
+        state.figureActive = true;
+        sound.figureRoar();
+        showToast('FIGURE đang tuần tra! Cúi người (C/Ctrl) để giữ im lặng.');
+      }
+
+      sprite.position.copy(m.pos);
+      scene.add(sprite);
+      state.monsters.push(m);
+      return m;
+    }
+
+    function damagePlayer(amount, killerName, advice) {
+      if (state.godmode || (state.mode !== 'playing' && state.mode !== 'spectating')) return;
+      state.hp = Math.max(0, state.hp - amount);
+      const flash = document.getElementById('jumpscare-flash');
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 150);
+      updateHud();
+
+      if (state.hp <= 0) {
+        state.lastDeathInfo = { killer: killerName, advice };
+        const others = Array.from(remotePlayers.values());
+        if (state.isOnline && others.length > 0) {
+          enterThirdPersonSpectate();
+        } else {
+          triggerGuidingLight(killerName, advice);
+        }
+      }
+    }
+
+    // ================= 3RD-PERSON SPECTATE MODE =================
+    function enterThirdPersonSpectate() {
+      state.mode = 'spectating';
+      state.pendingSpawns = [];
+      document.getElementById('monster-warning-banner').style.display = 'none';
+      document.getElementById('heartbeat-modal').classList.remove('active');
+      state.heartbeat.active = false;
+      fpArmGroup.visible = false;
+      flashlight.intensity = 0;
+      lighterLight.intensity = 0;
+      document.getElementById('prompt-banner').style.display = 'none';
+      document.getElementById('spectate-bar').classList.add('active');
+      cycleSpectateTarget(0);
+      showToast('Bạn đã gục ngã — chuyển sang góc nhìn thứ 3 theo dõi người chơi khác!');
+    }
+
+    function cycleSpectateTarget(step = 1) {
+      const list = Array.from(remotePlayers.values());
+      if (list.length === 0) {
+        triggerGuidingLight(state.lastDeathInfo.killer, state.lastDeathInfo.advice);
+        return;
+      }
+      state.spectateIndex = (state.spectateIndex + step + list.length) % list.length;
+      const target = list[state.spectateIndex];
+      document.getElementById('spectate-target-label').textContent = `👁 Góc nhìn thứ 3: ${target.name}`;
+    }
+
+    function updateThirdPersonSpectate(dt) {
+      const list = Array.from(remotePlayers.values());
+      if (list.length === 0) {
+        triggerGuidingLight(state.lastDeathInfo.killer, state.lastDeathInfo.advice);
+        return;
+      }
+      if (state.spectateIndex >= list.length) state.spectateIndex = 0;
+      const target = list[state.spectateIndex];
+
+      // Đặt camera góc nhìn thứ 3 phía sau & hơi cao trên nhân vật đồng đội
+      const yaw = target.yaw || 0;
+      const distBack = 3.2;
+      const desiredX = target.root.position.x + Math.sin(yaw) * distBack;
+      const desiredY = Math.max(1.2, target.root.position.y + 2.35);
+      const desiredZ = target.root.position.z + Math.cos(yaw) * distBack;
+
+      camera.position.x += (desiredX - camera.position.x) * Math.min(1, dt * 8);
+      camera.position.y += (desiredY - camera.position.y) * Math.min(1, dt * 8);
+      camera.position.z += (desiredZ - camera.position.z) * Math.min(1, dt * 8);
+      camera.lookAt(target.root.position.x, target.root.position.y + 1.35, target.root.position.z);
+
+      const approxRoom = Math.max(1, Math.min(TOTAL_ROOMS, Math.floor(-target.root.position.z / ROOM_LENGTH) + 1));
+      if (approxRoom !== state.currentRoomIndex) {
+        state.currentRoomIndex = approxRoom;
+        updateLoadedRooms(approxRoom);
+      }
+    }
+
+    function triggerGuidingLight(killerName, advice) {
+      state.mode = 'dead';
+      document.getElementById('spectate-bar').classList.remove('active');
+      document.getElementById('monster-warning-banner').style.display = 'none';
+      if (document.pointerLockElement) document.exitPointerLock();
+      document.getElementById('hud').classList.remove('active');
+      document.getElementById('mod-menu-panel').classList.remove('open');
+      document.getElementById('heartbeat-modal').classList.remove('active');
+      state.heartbeat.active = false;
+
+      document.getElementById('gl-cause').textContent = `Hạ gục bởi: ${killerName} (Phòng ${String(state.currentRoomIndex).padStart(4, '0')})`;
+      document.getElementById('gl-advice').textContent = advice;
+      document.getElementById('guiding-light-screen').classList.add('active');
+    }
+
+    function tryCrucifixBanish(monster) {
+      const slot = state.hotbar.find((s) => s.id === 'crucifix');
+      if (slot && slot.count > 0 && state.hotbar[state.selectedSlot]?.id === 'crucifix') {
+        slot.count -= 1;
+        sound.crucifixSeal();
+        showToast('Thánh giá đã phong ấn quái vật!');
+        scene.remove(monster.sprite);
+        state.monsters = state.monsters.filter((x) => x.id !== monster.id);
+        renderHotbar();
+        return true;
+      }
+      return false;
+    }
+
+    function updateMonsters(dt) {
+      if (state.mode !== 'playing') return;
+      const pPos = camera.position;
+      const lookDir = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation).normalize();
+
+      for (let i = state.monsters.length - 1; i >= 0; i--) {
+        const m = state.monsters[i];
+        if (m.stunTimer > 0) {
+          m.stunTimer -= dt;
+          m.sprite.position.copy(m.pos);
+          continue;
+        }
+        const speedFactor = m.slowTimer > 0 ? 0.45 : 1.0;
+        if (m.slowTimer > 0) m.slowTimer -= dt;
+
+        if (m.type === 'rush') {
+          m.pos.z += m.velZ * speedFactor * dt;
+          m.sprite.position.copy(m.pos);
+
+          if (Math.abs(m.pos.z - pPos.z) < 1.35) {
+            if (!tryCrucifixBanish(m) && !state.hidingInCloset) {
+              damagePlayer(100, 'Rush', 'Khi có cảnh báo Rush 10 giây và đèn nhấp nháy, hãy chui vào Tủ đồ (phím E) trước khi Rush lao xuyên qua phòng.');
+            }
+          }
+          if (m.pos.z < pPos.z - 22) {
+            scene.remove(m.sprite);
+            state.monsters.splice(i, 1);
+          }
+        } else if (m.type === 'ambush') {
+          if (m.pauseTimer > 0) {
+            m.pauseTimer -= dt;
+            continue;
+          }
+          m.pos.z += m.velZ * speedFactor * dt;
+          m.sprite.position.copy(m.pos);
+
+          if (Math.abs(m.pos.z - pPos.z) < 1.35) {
+            if (!tryCrucifixBanish(m) && !state.hidingInCloset) {
+              damagePlayer(100, 'Ambush', 'Ambush có cảnh báo 10 giây rồi lao qua lại (rebound) từ 2 đến 6 lần. Hãy canh nhịp ra/vào tủ hợp lý.');
+            }
+          }
+
+          if (m.velZ < 0 && m.pos.z < pPos.z - 15) {
+            if (m.reboundsLeft > 0) {
+              m.reboundsLeft -= 1;
+              m.velZ = 25;
+              m.pauseTimer = 0.45;
+              sound.ambushShriek();
+            } else {
+              scene.remove(m.sprite);
+              state.monsters.splice(i, 1);
+            }
+          } else if (m.velZ > 0 && m.pos.z > pPos.z + 15) {
+            m.velZ = -25;
+            m.pauseTimer = 0.45;
+            sound.ambushShriek();
+          }
+        } else if (m.type === 'screech') {
+          m.screechTimer -= dt;
+          const toMon = m.pos.clone().sub(pPos).normalize();
+          if (lookDir.dot(toMon) > 0.86) {
+            showToast('Bạn đã xua đuổi Screech!');
+            scene.remove(m.sprite);
+            state.monsters.splice(i, 1);
+            continue;
+          }
+          if (m.screechTimer <= 0) {
+            if (!tryCrucifixBanish(m)) {
+              damagePlayer(25, 'Screech', 'Khi nghe tiếng "psst" trong Phòng tối, hãy xoay camera thật nhanh để nhìn thẳng vào Screech.');
+            }
+            scene.remove(m.sprite);
+            state.monsters.splice(i, 1);
+          }
+        } else if (m.type === 'eyes') {
+          const toEyes = m.pos.clone().sub(pPos).normalize();
+          if (lookDir.dot(toEyes) > 0.78 && !state.crouching) {
+            damagePlayer(24 * dt, 'Eyes', 'Đừng nhìn thẳng vào quầng sáng của Eyes! Hãy cúi người (C / Ctrl) hoặc quay mặt sang hướng khác.');
+          }
+        } else if (m.type === 'seek') {
+          m.pos.x += (pPos.x - m.pos.x) * Math.min(1, dt * 3.2);
+          m.pos.z -= 11.5 * speedFactor * dt;
+          if (m.pos.z > pPos.z + 15.2) m.pos.z = pPos.z + 15.2;
+          m.sprite.position.copy(m.pos);
+
+          if (m.pos.distanceTo(pPos) < 1.55) {
+            if (!tryCrucifixBanish(m)) {
+              damagePlayer(100, 'Seek', 'Seek rượt đuổi quanh Phòng ~35 và ~75. Giữ Shift chạy liên tục, mở cửa (E) nhanh và dùng Rìu/Đèn UV để làm chậm.');
+            }
+          }
+          if (state.currentRoomIndex >= 100 || m.pos.z < pPos.z - 25) {
+            state.seekActive = false;
+            scene.remove(m.sprite);
+            state.monsters.splice(i, 1);
+          }
+        } else if (m.type === 'figure') {
+          const wp = m.figureWaypoints[m.wpIndex % m.figureWaypoints.length];
+          const isMovingLoud = !state.crouching && (keysDown['KeyW'] || keysDown['KeyA'] || keysDown['KeyS'] || keysDown['KeyD'] || keysDown['ArrowUp'] || keysDown['ArrowDown'] || keysDown['ArrowLeft'] || keysDown['ArrowRight']);
+
+          let targetPt = wp;
+          let moveSpeed = 3.2 * speedFactor;
+          if (isMovingLoud && !state.hidingInCloset) {
+            targetPt = new THREE.Vector3(pPos.x, 1.45, pPos.z);
+            moveSpeed = 5.4 * speedFactor;
+          }
+
+          const dir = targetPt.clone().sub(m.pos);
+          if (dir.length() > 0.15) {
+            dir.normalize();
+            m.pos.addScaledVector(dir, moveSpeed * dt);
+          } else {
+            m.wpIndex = (m.wpIndex + 1) % m.figureWaypoints.length;
+          }
+          m.sprite.position.copy(m.pos);
+
+          if (state.hidingInCloset && m.pos.distanceTo(pPos) < 2.3 && !state.heartbeat.active) {
+            startHeartbeatMinigame(m);
+          } else if (!state.hidingInCloset && m.pos.distanceTo(pPos) < 1.45) {
+            if (!tryCrucifixBanish(m)) {
+              damagePlayer(100, 'Figure', 'Figure bị mù nhưng thính giác cực nhạy. Hãy giữ C/Ctrl (cúi người) để im lặng và bấm đúng nhịp chuột khi bị dồn vào tủ.');
+            }
+          }
+        }
+      }
+    }
+
+    // ================= HEARTBEAT MINIGAME =================
+    function startHeartbeatMinigame(figureMon) {
+      state.heartbeat.active = true;
+      state.heartbeat.cursorPos = 0;
+      state.heartbeat.dir = 1;
+      state.heartbeat.hits = 0;
+      state.heartbeat.nextExpectLeft = true;
+      state.heartbeat.figureRef = figureMon;
+      document.getElementById('hb-progress-text').textContent = `Nhịp thành công: 0 / ${state.heartbeat.targetHits}`;
+      document.getElementById('hb-instruction').innerHTML = 'Bấm <b>CHUỘT TRÁI</b> khi vạch chạy vào <b>VÙNG XANH</b>!';
+      document.getElementById('heartbeat-modal').classList.add('active');
+    }
+
+    function updateHeartbeatMinigame(dt) {
+      const hb = state.heartbeat;
+      if (!hb.active) return;
+      hb.cursorPos += hb.dir * 82 * dt;
+      if (hb.cursorPos >= 100) { hb.cursorPos = 100; hb.dir = -1; }
+      else if (hb.cursorPos <= 0) { hb.cursorPos = 0; hb.dir = 1; }
+      document.getElementById('hb-cursor').style.left = `${hb.cursorPos}%`;
+    }
+
+    function handleHeartbeatClick(isLeftClick) {
+      const hb = state.heartbeat;
+      if (!hb.active) return;
+      const inGreen = hb.cursorPos >= 36 && hb.cursorPos <= 64;
+      const rightButton = isLeftClick === hb.nextExpectLeft;
+
+      if (inGreen && rightButton) {
+        hb.hits += 1;
+        hb.nextExpectLeft = !hb.nextExpectLeft;
+        sound.playTone(540, 720, 0.1, 'sine', 0.16);
+        document.getElementById('hb-progress-text').textContent = `Nhịp thành công: ${hb.hits} / ${hb.targetHits}`;
+        document.getElementById('hb-instruction').innerHTML = `Bấm <b>${hb.nextExpectLeft ? 'CHUỘT TRÁI' : 'CHUỘT PHẢI'}</b> khi vạch vào <b>VÙNG XANH</b>!`;
+        if (hb.hits >= hb.targetHits) {
+          hb.active = false;
+          document.getElementById('heartbeat-modal').classList.remove('active');
+          if (hb.figureRef) {
+            hb.figureRef.pos.z += 6.5;
+            hb.figureRef.stunTimer = 2.0;
+          }
+          showToast('Tim đập ổn định! Figure đã bỏ qua tủ của bạn.');
+        }
+      } else {
+        hb.active = false;
+        document.getElementById('heartbeat-modal').classList.remove('active');
+        exitCloset(true);
+        damagePlayer(55, 'Figure', 'Nhịp tim bị lỡ nhịp khiến Figure phát hiện! Hãy bấm luân phiên Chuột Trái / Chuột Phải đúng lúc vạch nằm trong vùng xanh.');
+      }
+    }
+
+    // ================= INTERACTION (E) =================
+    const _lookDir = new THREE.Vector3();
+    const _toItem = new THREE.Vector3();
+
+    function findNearestInteractable(maxDist = 3.8) {
+      camera.getWorldDirection(_lookDir);
+      let best = null;
+      let bestScore = Infinity;
+
+      for (const item of interactables) {
+        if (item.type === 'book' && item.collected) continue;
+        if (item.type === 'door' && item.opened) continue;
+        const dist = item.pos.distanceTo(camera.position);
+        if (dist > maxDist) continue;
+
+        _toItem.subVectors(item.pos, camera.position).normalize();
+        const align = _lookDir.dot(_toItem);
+        const score = dist * (align > 0.55 ? 0.55 : 1.35);
+        if (score < bestScore) {
+          bestScore = score;
+          best = item;
+        }
+      }
+      return best;
+    }
+
+    function enterCloset(closetObj) {
+      state.hidingInCloset = closetObj;
+      state.hideTimer = 0;
+      camera.position.copy(closetObj.hidePos);
+      showToast('Đang trốn trong tủ (E để ra). Đừng ở quá ~10.5 giây!');
+      emitPlayerSync();
+    }
+
+    function exitCloset(forcedByHide = false) {
+      if (!state.hidingInCloset) return;
+      const c = state.hidingInCloset;
+      state.hidingInCloset = null;
+      state.hideTimer = 0;
+      camera.position.set(c.pos.x, state.crouching ? 1.05 : 1.65, c.pos.z);
+      if (forcedByHide) {
+        sound.screechPsst();
+        damagePlayer(30, 'Hide', 'Hide đẩy bạn ra nếu trốn trong tủ quá ~10–11 giây. Hãy chui ra nghỉ giữa chừng rồi trốn lại nếu cần.');
+      } else {
+        showToast('Đã ra khỏi tủ.');
+      }
+      emitPlayerSync();
+    }
+
+    function unlockAndOpenDoor(target) {
+      target.locked = false;
+      target.opened = true;
+      target.mesh.material.map = getDoorTexture(target.roomIndex, false, target.roomIndex === TOTAL_ROOMS);
+      target.mesh.material.needsUpdate = true;
+
+      if (target.collider) {
+        const cIdx = colliders.indexOf(target.collider);
+        if (cIdx !== -1) colliders.splice(cIdx, 1);
+      }
+
+      sound.doorOpen(false);
+      if (state.isOnline && state.socket) state.socket.emit('door_opened', target.roomIndex);
+
+      if (target.roomIndex === TOTAL_ROOMS) {
+        showToast('CHÚC MỪNG! Bạn đã vượt qua cả 100 phòng DOORS BUT GEI!', 5000);
+        return;
+      }
+
+      const nextRoom = Math.min(TOTAL_ROOMS, target.roomIndex + 1);
+      state.currentRoomIndex = nextRoom;
+      updateLoadedRooms(nextRoom);
+
+      if ((nextRoom === 35 || nextRoom === 75) && !state.seekTriggeredRooms.has(nextRoom)) {
+        state.seekTriggeredRooms.add(nextRoom);
+        spawnMonsterNow('seek');
+      } else if (nextRoom === 50 && !state.figureActive) {
+        spawnMonsterNow('figure');
+      } else if (nextRoom > 1 && Math.random() < 0.24) {
+        const rType = Math.random();
+        if (rType < 0.45) scheduleMonsterWith10sWarning('rush');
+        else if (rType < 0.75) scheduleMonsterWith10sWarning('ambush');
+        else if (rType < 0.9) spawnMonsterNow('eyes');
+        else if (getRoomType(nextRoom).key === 'dark') spawnMonsterNow('screech');
+      }
+      updateHud();
+    }
+
+    function handleInteract() {
+      if (state.mode !== 'playing') return;
+
+      if (state.hidingInCloset) {
+        exitCloset(false);
+        return;
+      }
+
+      const target = findNearestInteractable(3.8);
+      if (!target) return;
+
+      if (target.type === 'closet') {
+        enterCloset(target);
+      } else if (target.type === 'drawer') {
+        if (!target.opened) {
+          target.opened = true;
+          sound.drawerSlide();
+          if (state.isOnline && state.socket) state.socket.emit('drawer_opened', target.id);
+
+          if (target.loot === 'key') {
+            state.keys += 1;
+            syncKeySlot();
+            showToast('Nhặt được CHÌA KHÓA từ ngăn kéo!');
+          } else if (target.loot === 'vitamins') {
+            const vSlot = state.hotbar.find((s) => s.id === 'vitamins');
+            if (vSlot) vSlot.count += 1;
+            showToast('Nhặt được Vitamins!');
+          } else if (target.loot === 'crucifix') {
+            const cSlot = state.hotbar.find((s) => s.id === 'crucifix');
+            if (cSlot) cSlot.count += 1;
+            showToast('Nhặt được Thánh giá (Crucifix)!');
+          } else if (target.loot === 'timothy') {
+            sound.screechPsst();
+            damagePlayer(8, 'Timothy', 'Timothy là chú nhện giật mình trong ngăn kéo — chỉ trừ một chút máu chứ không gây chết.');
+            showToast('TIMOTHY nhảy ra từ ngăn kéo! (-8 HP)');
+          } else {
+            state.gold += target.goldAmount;
+            showToast(`Nhặt được +${target.goldAmount} Gold!`);
+          }
+          renderHotbar();
+          updateHud();
+        } else {
+          showToast('Ngăn kéo đã mở.');
+        }
+      } else if (target.type === 'door') {
+        if (target.roomIndex === 50 && state.collectedBooks.size < 5) {
+          showToast(`Cần nhặt đủ 5 cuốn sách Thư viện (${state.collectedBooks.size}/5) để mở cửa!`);
+          sound.doorOpen(true);
+          return;
+        }
+        if (target.locked) {
+          if (state.keys > 0) {
+            state.keys -= 1;
+            syncKeySlot();
+            showToast('Đã mở khóa cửa bằng Chìa khóa!');
+            renderHotbar();
+          } else {
+            sound.doorOpen(true);
+            showToast('Cửa bị khóa! Hãy lục ngăn kéo tìm Chìa khóa.');
+            return;
+          }
+        }
+        unlockAndOpenDoor(target);
+      } else if (target.type === 'book') {
+        target.collected = true;
+        target.mesh.visible = false;
+        state.collectedBooks.add(target.id);
+        sound.crucifixSeal();
+        if (state.isOnline && state.socket) state.socket.emit('book_collected', target.id);
+        showToast(`Đã thu thập sách mật mã (${state.collectedBooks.size}/5)`);
+        updateHud();
+      } else if (target.type === 'workbench') {
+        openCraftModal();
+      } else if (target.type === 'crate') {
+        if (!target.opened) {
+          target.opened = true;
+          target.mesh.scale.set(1, 0.45, 1);
+          target.mesh.position.y = 0.22;
+          state.gold += target.goldAmount;
+          sound.drawerSlide();
+          showToast(`Đập thùng nhặt được +${target.goldAmount} Gold!`);
+          updateHud();
+        }
+      }
+    }
+
+    function useSelectedHotbarItem() {
+      const slot = state.hotbar[state.selectedSlot];
+      if (!slot) return;
+
+      if (slot.id === 'vitamins' && slot.count > 0) {
+        slot.count -= 1;
+        state.hp = Math.min(state.maxHp, state.hp + 25);
+        state.stamina = 100;
+        sound.crucifixSeal();
+        showToast('Dùng Vitamins: +25 HP & hồi đầy Stamina!');
+        renderHotbar();
+        updateHud();
+        return;
+      }
+
+      if (slot.id === 'axe' && slot.count > 0) {
+        sound.weaponSwing(false);
+        fpArmGroup.rotation.x = -0.85;
+        setTimeout(() => { fpArmGroup.rotation.x = 0; }, 180);
+
+        let hitAny = false;
+        for (const m of state.monsters) {
+          if (m.pos.distanceTo(camera.position) < 4.2) {
+            m.stunTimer = 2.6;
+            m.pos.z += 3.2;
+            hitAny = true;
+          }
+        }
+        for (const it of interactables) {
+          if (it.type === 'crate' && !it.opened && it.pos.distanceTo(camera.position) < 3.4) {
+            it.opened = true;
+            it.mesh.visible = false;
+            state.gold += it.goldAmount;
+            hitAny = true;
+            showToast(`Dùng Rìu đập thùng: +${it.goldAmount} Gold!`);
+          }
+        }
+        if (hitAny) showToast('Tấn công cận chiến thành công! Quái bị choáng & đẩy lùi.');
+        updateHud();
+        return;
+      }
+
+      if (slot.id === 'uv' && slot.count > 0) {
+        sound.weaponSwing(true);
+        flashlight.intensity = 7.5;
+        setTimeout(() => { flashlight.intensity = state.flashlightOn ? 3.0 : 0; }, 260);
+
+        let pushed = false;
+        for (let i = state.monsters.length - 1; i >= 0; i--) {
+          const m = state.monsters[i];
+          if (m.pos.distanceTo(camera.position) < 11) {
+            if (m.type === 'screech') {
+              scene.remove(m.sprite);
+              state.monsters.splice(i, 1);
+              pushed = true;
+            } else {
+              m.slowTimer = 4.5;
+              m.pos.z += 4.5;
+              pushed = true;
+            }
+          }
+        }
+        showToast(pushed ? 'Xung Đèn UV đẩy lùi & làm chậm quái bóng tối!' : 'Đã phát xung ánh sáng UV!');
+      }
+    }
+
+    function craftItem(itemId, cost) {
+      if (state.gold < cost) {
+        showToast(`Không đủ Gold! Cần ${cost} Gold.`);
+        return;
+      }
+      const slot = state.hotbar.find((s) => s.id === itemId);
+      if (!slot) return;
+      state.gold -= cost;
+      slot.count += 1;
+      sound.crucifixSeal();
+      showToast(`Đã chế tạo ${slot.name}!`);
+      renderHotbar();
+      updateHud();
+      const craftGoldEl = document.getElementById('craft-gold-val');
+      if (craftGoldEl) craftGoldEl.textContent = state.gold;
+    }
+
+    function openCraftModal() {
+      if (document.pointerLockElement) document.exitPointerLock();
+      document.getElementById('craft-gold-val').textContent = state.gold;
+      document.getElementById('craft-modal').classList.add('open');
+    }
+
+    function closeCraftModal() {
+      document.getElementById('craft-modal').classList.remove('open');
+      if (state.mode === 'playing') canvas.requestPointerLock?.();
+    }
+
+    // ================= INPUT & MOVEMENT =================
+    const keysDown = {};
+    let isDraggingLook = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let stepAccumulator = 0;
+
+    window.addEventListener('keydown', (e) => {
+      keysDown[e.code] = true;
+
+      if (state.mode === 'spectating' && e.code === 'KeyQ') {
+        cycleSpectateTarget(1);
+        return;
+      }
+
+      if (state.mode !== 'playing') return;
+
+      if (e.code === 'KeyE') {
+        handleInteract();
+      } else if (e.code === 'KeyF') {
+        state.flashlightOn = !state.flashlightOn;
+        flashlight.intensity = state.flashlightOn ? 3.0 : 0;
+        syncToggleButtons();
+      } else if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') {
+        if (!state.hidingInCloset) {
+          state.crouching = !state.crouching;
+          showToast(state.crouching ? 'Đang cúi người (im lặng)' : 'Đã đứng dậy', 1100);
+        }
+      } else if (e.code.startsWith('Digit')) {
+        const num = Number(e.code.replace('Digit', '')) - 1;
+        if (num >= 0 && num < state.hotbar.length) {
+          state.selectedSlot = num;
+          renderHotbar();
+          updateHeldVisual();
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keysDown[e.code] = false;
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (state.mode !== 'playing') return;
+      if (state.heartbeat.active) {
+        handleHeartbeatClick(e.button === 0);
+        return;
+      }
+      if (!document.pointerLockElement && canvas.requestPointerLock) {
+        canvas.requestPointerLock();
+      }
+      isDraggingLook = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      if (e.button === 0) useSelectedHotbarItem();
+    });
+
+    window.addEventListener('mouseup', () => { isDraggingLook = false; });
+
+    window.addEventListener('contextmenu', (e) => {
+      if (state.mode === 'playing') {
+        e.preventDefault();
+        if (state.heartbeat.active) handleHeartbeatClick(false);
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (state.mode !== 'playing' || state.heartbeat.active) return;
+      const sens = 0.0022;
+      if (document.pointerLockElement === canvas) {
+        camera.rotation.y -= e.movementX * sens;
+        camera.rotation.x -= e.movementY * sens;
+      } else if (isDraggingLook) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        camera.rotation.y -= dx * sens * 1.4;
+        camera.rotation.x -= dy * sens * 1.4;
+      }
+      camera.rotation.x = Math.max(-1.35, Math.min(1.35, camera.rotation.x));
+    });
+
+    function checkCollision(nx, nz) {
+      const r = 0.36;
+      for (let i = 0; i < colliders.length; i++) {
+        const c = colliders[i];
+        if (nx + r > c.minX && nx - r < c.maxX && nz + r > c.minZ && nz - r < c.maxZ) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function updateMovement(dt) {
+      if (state.mode !== 'playing') return;
+
+      if (state.hidingInCloset) {
+        state.hideTimer += dt;
+        sound.updateHeartbeat(dt, state.heartbeat.active || state.hideTimer > 6.5);
+        if (state.hideTimer >= 10.6) exitCloset(true);
+        return;
+      }
+      sound.updateHeartbeat(dt, false);
+
+      let forwardInput = 0;
+      let rightInput = 0;
+      if (keysDown['KeyW'] || keysDown['ArrowUp']) forwardInput += 1;
+      if (keysDown['KeyS'] || keysDown['ArrowDown']) forwardInput -= 1;
+      if (keysDown['KeyD'] || keysDown['ArrowRight']) rightInput += 1;
+      if (keysDown['KeyA'] || keysDown['ArrowLeft']) rightInput -= 1;
+
+      const moving = forwardInput !== 0 || rightInput !== 0;
+      const wantsSprint = (keysDown['ShiftLeft'] || keysDown['ShiftRight']) && moving && !state.crouching && state.stamina > 1;
+
+      let speed = state.crouching ? 2.4 : 5.0;
+      if (wantsSprint) {
+        speed = 7.8;
+        if (!state.infStamina) state.stamina = Math.max(0, state.stamina - 22 * dt);
+      } else if (!state.infStamina) {
+        state.stamina = Math.min(100, state.stamina + (moving ? 9 : 16) * dt);
+      }
+
+      if (moving) {
+        const yaw = camera.rotation.y;
+        const forwardX = -Math.sin(yaw);
+        const forwardZ = -Math.cos(yaw);
+        const rightX = Math.cos(yaw);
+        const rightZ = -Math.sin(yaw);
+
+        let mx = forwardX * forwardInput + rightX * rightInput;
+        let mz = forwardZ * forwardInput + rightZ * rightInput;
+        const len = Math.hypot(mx, mz) || 1;
+        mx = (mx / len) * speed * dt;
+        mz = (mz / len) * speed * dt;
+
+        const nextX = camera.position.x + mx;
+        const nextZ = camera.position.z + mz;
+
+        if (!checkCollision(nextX, camera.position.z)) camera.position.x = nextX;
+        if (!checkCollision(camera.position.x, nextZ)) camera.position.z = nextZ;
+
+        stepAccumulator += speed * dt;
+        if (stepAccumulator > 2.2) {
+          stepAccumulator = 0;
+          sound.footstep(state.crouching);
+        }
+        fpArmGroup.position.y = -0.34 + Math.sin(performance.now() * 0.012) * 0.018;
+      } else {
+        fpArmGroup.position.y = -0.34;
+      }
+
+      const targetEyeY = state.crouching ? 1.05 : 1.65;
+      camera.position.y += (targetEyeY - camera.position.y) * Math.min(1, dt * 12);
+
+      const approxRoom = Math.max(1, Math.min(TOTAL_ROOMS, Math.floor(-camera.position.z / ROOM_LENGTH) + 1));
+      if (approxRoom !== state.currentRoomIndex) {
+        state.currentRoomIndex = approxRoom;
+        updateLoadedRooms(approxRoom);
+      }
+    }
+
+    function updateAnimations(dt) {
+      for (let i = 0; i < interactables.length; i++) {
+        const item = interactables[i];
+        if (item.type === 'drawer') {
+          const targetSlide = item.opened ? 0.34 : 0;
+          item.slideProgress += (targetSlide - item.slideProgress) * Math.min(1, dt * 9);
+          item.slideGroup.position.z = 0.04 + item.slideProgress;
+        } else if (item.type === 'door' && item.opened) {
+          item.openProgress = Math.min(1, item.openProgress + dt * 3.8);
+          item.pivot.rotation.y = -item.openProgress * (Math.PI * 0.58);
+        }
+      }
+
+      const activeSlot = state.hotbar[state.selectedSlot];
+      lighterLight.intensity = state.mode === 'playing' && activeSlot && activeSlot.id === 'lighter' && activeSlot.count > 0 ? 1.85 : 0;
+    }
+
+    function updateHeldVisual() {
+      const slot = state.hotbar[state.selectedSlot];
+      heldAxeGroup.visible = Boolean(slot && slot.id === 'axe' && slot.count > 0);
+      heldUvMesh.visible = Boolean(slot && slot.id === 'uv' && slot.count > 0);
+      heldTorchMesh.visible = !heldAxeGroup.visible && !heldUvMesh.visible;
+    }
+
+    // ================= UI & HUD RENDERING =================
+    function renderHotbar() {
+      const hbEl = document.getElementById('hotbar');
+      hbEl.innerHTML = '';
+      state.hotbar.forEach((s, idx) => {
+        const div = document.createElement('div');
+        div.className = `slot ${idx === state.selectedSlot ? 'active' : ''}`;
+        div.innerHTML = `<span class="slot-key">${idx + 1}</span><span>${s.name}</span><span class="slot-count">${s.count > 0 ? 'x' + s.count : '—'}</span>`;
+        div.onclick = () => {
+          state.selectedSlot = idx;
+          renderHotbar();
+          updateHeldVisual();
+        };
+        hbEl.appendChild(div);
+      });
+      updateHeldVisual();
+    }
+
+    let lastPromptText = '';
+    function updateHud() {
+      const typeInfo = getRoomType(state.currentRoomIndex);
+      document.getElementById('hud-room').textContent = `${String(state.currentRoomIndex).padStart(4, '0')}/${String(TOTAL_ROOMS).padStart(4, '0')}`;
+      document.getElementById('hud-room-type').textContent = typeInfo.label;
+      document.getElementById('hud-gold').textContent = state.gold;
+
+      const objEl = document.getElementById('hud-objective');
+      if (state.currentRoomIndex === 50 || typeInfo.key === 'library') {
+        objEl.style.display = 'inline';
+        document.getElementById('hud-books').textContent = `${state.collectedBooks.size}/5`;
+      } else {
+        objEl.style.display = 'none';
+      }
+
+      document.getElementById('hud-hp-text').textContent = `${Math.ceil(state.hp)}/${state.maxHp}`;
+      document.getElementById('hud-hp-bar').style.width = `${Math.max(0, (state.hp / state.maxHp) * 100)}%`;
+
+      document.getElementById('hud-st-text').textContent = `${Math.round(state.stamina)}%`;
+      document.getElementById('hud-st-bar').style.width = `${Math.max(0, state.stamina)}%`;
+
+      const deg = ((((-camera.rotation.y * 180) / Math.PI) % 360) + 360) % 360;
+      let cardinal = 'Bắc';
+      if (deg >= 45 && deg < 135) cardinal = 'Đông';
+      else if (deg >= 135 && deg < 225) cardinal = 'Nam';
+      else if (deg >= 225 && deg < 315) cardinal = 'Tây';
+      document.getElementById('hud-facing').textContent = `Hướng ${cardinal} (${Math.round(deg)}°)`;
+
+      const promptEl = document.getElementById('prompt-banner');
+      let nextPrompt = '';
+      if (state.mode === 'playing') {
+        if (state.hidingInCloset) {
+          nextPrompt = '[E] Ra khỏi tủ đồ';
+        } else {
+          const near = findNearestInteractable(3.8);
+          if (near) {
+            if (near.type === 'door') {
+              nextPrompt = `[E] ${near.locked ? 'Mở cửa khóa' : 'Mở cửa ' + String(near.roomIndex).padStart(4, '0')}`;
+            } else if (near.type === 'drawer') {
+              nextPrompt = `[E] ${near.opened ? 'Đã mở' : 'Mở ngăn kéo'}`;
+            } else if (near.type === 'closet') {
+              nextPrompt = '[E] Trốn tủ';
+            } else if (near.type === 'book') {
+              nextPrompt = '[E] Nhặt sách';
+            } else if (near.type === 'workbench') {
+              nextPrompt = '[E] Bàn chế tạo';
+            } else if (near.type === 'crate') {
+              nextPrompt = `[E] ${near.opened ? 'Đã mở' : 'Mở thùng'}`;
+            }
+          }
+        }
+      }
+
+      if (nextPrompt !== lastPromptText) {
+        lastPromptText = nextPrompt;
+        if (nextPrompt) {
+          promptEl.textContent = nextPrompt;
+          promptEl.style.display = 'block';
+        } else {
+          promptEl.style.display = 'none';
+        }
+      }
+    }
+
+    function syncToggleButtons() {
+      document.getElementById('btn-toggle-flash').textContent = `🔦 ${state.flashlightOn ? 'BẬT' : 'TẮT'}`;
+      document.getElementById('btn-toggle-audio').textContent = `${sound.enabled ? '🔊' : '🔇'} ${sound.enabled ? 'BẬT' : 'TẮT'}`;
+    }
+
+    // ================= MODALS & MAIN MENU =================
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    document.getElementById('player-name-input').addEventListener('change', (e) => {
+      state.playerName = e.target.value.trim() || 'Khách_01';
+    });
+
+    document.getElementById('btn-guide').onclick = () => {
+      document.getElementById('guide-modal').classList.add('open');
+    };
+
+    document.getElementById('admin-lock-btn').onclick = () => {
+      document.getElementById('admin-pass-input').value = '';
+      document.getElementById('admin-pass-msg').textContent = '';
+      document.getElementById('admin-modal').classList.add('open');
+    };
+
+    document.getElementById('btn-submit-admin').onclick = () => {
+      const val = document.getElementById('admin-pass-input').value.trim();
+      if (val === ADMIN_PASSWORD) {
+        state.isAdmin = true;
+        document.getElementById('admin-lock-btn').classList.add('active');
+        document.getElementById('admin-lock-btn').textContent = '🔓 Admin';
+        document.getElementById('btn-mod-menu').style.display = 'inline-block';
+        closeModal('admin-modal');
+        showToast('Đã kích hoạt quyền Admin! Mod Menu sẵn sàng.');
+      } else {
+        document.getElementById('admin-pass-msg').textContent = 'Mật khẩu không đúng.';
+      }
+    };
+
+    function toggleModMenu(forceState) {
+      if (!state.isAdmin) return;
+      const panel = document.getElementById('mod-menu-panel');
+      const next = typeof forceState === 'boolean' ? forceState : !panel.classList.contains('open');
+      panel.classList.toggle('open', next);
+      if (next && document.pointerLockElement) document.exitPointerLock();
+    }
+
+    document.getElementById('btn-mod-menu').onclick = () => toggleModMenu();
+
+    function adminTeleportRoom() {
+      const rIdx = Math.max(1, Math.min(TOTAL_ROOMS, Number(document.getElementById('mod-room-input').value) || 1));
+      state.currentRoomIndex = rIdx;
+      updateLoadedRooms(rIdx);
+      camera.position.set(0, state.crouching ? 1.05 : 1.65, -(rIdx - 1) * ROOM_LENGTH - 2.2);
+      if (rIdx === 50 && !state.figureActive) spawnMonsterNow('figure');
+      updateHud();
+      showToast(`Đã dịch chuyển tới Phòng ${String(rIdx).padStart(4, '0')}`);
+    }
+
+    function adminTeleportTeammate() {
+      const firstRemote = remotePlayers.values().next().value;
+      if (firstRemote) {
+        camera.position.set(firstRemote.root.position.x, state.crouching ? 1.05 : 1.65, firstRemote.root.position.z + 1.1);
+        showToast('Đã dịch chuyển tới vị trí đồng đội!');
+      } else {
+        showToast('Chưa có đồng đội online nào trong phòng.');
+      }
+    }
+
+    function adminUnlockAllDoors() {
+      for (const item of interactables) {
+        if (item.type === 'door' && item.locked) {
+          item.locked = false;
+          item.mesh.material.map = getDoorTexture(item.roomIndex, false, item.roomIndex === TOTAL_ROOMS);
+          item.mesh.material.needsUpdate = true;
+        }
+      }
+      showToast('Đã mở khóa toàn bộ cửa!');
+    }
+
+    function adminToggleGod() {
+      state.godmode = !state.godmode;
+      document.getElementById('btn-mod-god').textContent = `Godmode: ${state.godmode ? 'BẬT' : 'TẮT'}`;
+      showToast(`Godmode ${state.godmode ? 'BẬT' : 'TẮT'}`);
+    }
+
+    function adminToggleInfStamina() {
+      state.infStamina = !state.infStamina;
+      document.getElementById('btn-mod-infst').textContent = `Vô hạn Stamina: ${state.infStamina ? 'BẬT' : 'TẮT'}`;
+      showToast(`Vô hạn Stamina ${state.infStamina ? 'BẬT' : 'TẮT'}`);
+    }
+
+    function adminGiveStuff() {
+      state.gold += 250;
+      state.keys += 3;
+      syncKeySlot();
+      renderHotbar();
+      updateHud();
+      showToast('Đã nhận +250 Gold & +3 Chìa khóa!');
+    }
+
+    function adminGiveWeapons() {
+      const axe = state.hotbar.find((s) => s.id === 'axe');
+      const uv = state.hotbar.find((s) => s.id === 'uv');
+      if (axe) axe.count += 1;
+      if (uv) uv.count += 1;
+      renderHotbar();
+      showToast('Đã nhận Rìu/Gậy Sắt & Đèn UV!');
+    }
+
+    function adminSpawnMonster(type) {
+      if (type === 'rush' || type === 'ambush') {
+        scheduleMonsterWith10sWarning(type);
+        showToast(`Cảnh báo ${type.toUpperCase()} — sẽ xuất hiện sau 10 giây!`);
+      } else {
+        spawnMonsterNow(type);
+        showToast(`Đã triệu hồi ${type.toUpperCase()}!`);
+      }
+    }
+
+    function adminClearMonsters() {
+      for (const m of state.monsters) {
+        if (m.sprite) scene.remove(m.sprite);
+      }
+      state.monsters = [];
+      state.pendingSpawns = [];
+      document.getElementById('monster-warning-banner').style.display = 'none';
+      state.seekActive = false;
+      state.figureActive = false;
+      showToast('Đã xóa toàn bộ quái vật.');
+    }
+
+    // ================= SOLO & MULTIPLAYER / LOBBY =================
+    function enterGameplay(seed = null, isOnline = false) {
+      state.playerName = document.getElementById('player-name-input').value.trim() || 'Khách_01';
+      state.seed = seed || (Math.floor(Math.random() * 900000) + 100000);
+      state.isOnline = isOnline;
+      state.mode = 'playing';
+
+      document.getElementById('main-menu').style.display = 'none';
+      closeModal('server-modal');
+      closeModal('lobby-modal');
+      document.getElementById('guiding-light-screen').classList.remove('active');
+      document.getElementById('hud').classList.add('active');
+
+      resetWorld();
+      syncToggleButtons();
+      sound.ensureCtx();
+      if (canvas.requestPointerLock) canvas.requestPointerLock();
+    }
+
+    document.getElementById('btn-solo').onclick = () => {
+      state.lobbyRoom = null;
+      enterGameplay(null, false);
+    };
+
+    const localFallbackServers = [
+      {
+        id: 'local_1',
+        name: 'Sảnh Binlight (Mô phỏng Offline)',
+        maxPlayers: 4,
+        hasPassword: false,
+        status: 'waiting',
+        playerCount: 1,
+        players: [{ id: 'local_host', name: 'Host_Binlight', isHost: true }]
+      }
+    ];
+
+    function connectSocketIfAvailable() {
+      if (state.socket) return state.socket;
+      if (typeof window.io === 'function' && !window.__SOCKET_UNAVAILABLE__) {
+        try {
+          const sock = window.io();
+          state.socket = sock;
+
+          sock.on('connect', () => {
+            document.getElementById('server-conn-status').textContent = '🟢 Đã kết nối máy chủ Socket.io realtime';
+            sock.emit('get_servers');
+          });
+
+          sock.on('server_list', (list) => renderServerList(list, true));
+
+          sock.on('joined_lobby', (room) => {
+            state.lobbyRoom = room;
+            state.mode = 'lobby';
+            closeModal('server-modal');
+            renderLobby(room);
+            document.getElementById('lobby-modal').classList.add('open');
+          });
+
+          sock.on('room_updated', (room) => {
+            state.lobbyRoom = room;
+            if (state.mode === 'lobby') renderLobby(room);
+          });
+
+          sock.on('game_started', (room) => {
+            state.lobbyRoom = room;
+            enterGameplay(room.seed, true);
+          });
+
+          sock.on('remote_player_update', ({ player }) => {
+            if (state.mode === 'playing' || state.mode === 'spectating') {
+              ensureRemotePlayerAvatar(player);
+            }
+          });
+
+          sock.on('remote_door_opened', ({ doorIndex }) => {
+            const rec = rooms.get(Number(doorIndex));
+            if (rec && rec.door && !rec.door.opened) unlockAndOpenDoor(rec.door);
+          });
+
+          sock.on('remote_drawer_opened', ({ drawerId }) => {
+            const it = interactables.find((x) => x.id === drawerId);
+            if (it) it.opened = true;
+          });
+
+          sock.on('remote_book_collected', ({ collectedBooks }) => {
+            state.collectedBooks = new Set(collectedBooks || []);
+            for (const b of libraryBooks) {
+              if (state.collectedBooks.has(b.id)) b.mesh.visible = false;
+            }
+            updateHud();
+          });
+
+          sock.on('remote_monster_event', (evt) => {
+            if (evt.monsterType && state.mode === 'playing') {
+              scheduleMonsterWith10sWarning(evt.monsterType);
+            }
+          });
+
+          return sock;
+        } catch (err) {
+          window.__SOCKET_UNAVAILABLE__ = true;
+        }
+      }
+      return null;
+    }
+
+    function renderServerList(list, isLive) {
+      const container = document.getElementById('server-list-container');
+      container.innerHTML = '';
+      if (!list || list.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted); font-size:13px; padding:12px 0;">Chưa có server nào. Hãy bấm "+ Tạo Server" để mở phòng mới!</div>';
+        return;
+      }
+
+      list.forEach((srv) => {
+        const row = document.createElement('div');
+        row.className = 'server-item';
+        const statusBadge = srv.status === 'waiting'
+          ? '<span class="badge badge-wait">Đang chờ</span>'
+          : '<span class="badge badge-play">Đang chơi</span>';
+        const lockIcon = srv.hasPassword ? '🔒 ' : '';
+
+        row.innerHTML = `
+          <div>
+            <b>${lockIcon}${escapeHtml(srv.name)}</b> ${statusBadge}
+            <div style="font-size:12px; color:var(--muted); margin-top:3px;">Người chơi: ${srv.playerCount}/${srv.maxPlayers}</div>
+          </div>
+        `;
+
+        const joinBtn = document.createElement('button');
+        joinBtn.className = 'btn btn-sm btn-primary';
+        joinBtn.textContent = 'Tham gia';
+        joinBtn.disabled = srv.playerCount >= srv.maxPlayers;
+        joinBtn.onclick = () => {
+          let pwd = '';
+          if (srv.hasPassword) pwd = prompt('Nhập mật khẩu server:') || '';
+          const pName = document.getElementById('player-name-input').value.trim() || 'Khách_01';
+          if (isLive && state.socket && state.socket.connected) {
+            state.socket.emit('join_server', { roomId: srv.id, password: pwd, playerName: pName }, (res) => {
+              if (res && !res.ok) showToast(res.error || 'Không thể tham gia.');
+            });
+          } else {
+            state.lobbyRoom = {
+              id: srv.id,
+              name: srv.name,
+              maxPlayers: srv.maxPlayers,
+              status: 'waiting',
+              seed: Math.floor(Math.random() * 900000) + 100000,
+              hostId: 'local_me',
+              players: [{ id: 'local_me', name: pName }]
+            };
+            state.mode = 'lobby';
+            closeModal('server-modal');
+            renderLobby(state.lobbyRoom);
+            document.getElementById('lobby-modal').classList.add('open');
+          }
+        };
+
+        row.appendChild(joinBtn);
+        container.appendChild(row);
+      });
+    }
+
+    function renderLobby(room) {
+      document.getElementById('lobby-room-title').textContent = `Phòng chờ: ${room.name}`;
+      document.getElementById('lobby-room-meta').textContent = `Sĩ số: ${room.players.length}/${room.maxPlayers} — Trạng thái: ${room.status === 'waiting' ? 'Đang chờ' : 'Đang chơi'}`;
+
+      const listEl = document.getElementById('lobby-players-list');
+      listEl.innerHTML = '';
+      room.players.forEach((p) => {
+        const isHost = p.id === room.hostId;
+        const div = document.createElement('div');
+        div.className = 'server-item';
+        div.innerHTML = `
+          <div>
+            <b>${escapeHtml(p.name)}</b>
+            ${isHost ? '<span class="badge badge-host">Chủ phòng (Host)</span>' : '<span class="badge badge-wait">Thành viên</span>'}
+          </div>
+        `;
+        listEl.appendChild(div);
+      });
+
+      const myId = state.socket && state.socket.connected ? state.socket.id : 'local_me';
+      const amIHost = room.hostId === myId;
+      document.getElementById('btn-host-start-game').style.display = amIHost ? 'block' : 'none';
+      document.getElementById('lobby-guest-wait').style.display = amIHost ? 'none' : 'block';
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    document.getElementById('btn-server').onclick = () => {
+      document.getElementById('server-modal').classList.add('open');
+      const sock = connectSocketIfAvailable();
+      if (sock && sock.connected) {
+        document.getElementById('server-conn-status').textContent = '🟢 Đã kết nối máy chủ Socket.io realtime';
+        sock.emit('get_servers');
+      } else {
+        document.getElementById('server-conn-status').textContent = '🟡 Chế độ mô phỏng offline (chạy `npm start` để chơi mạng realtime)';
+        renderServerList(localFallbackServers, false);
+      }
+    };
+
+    document.getElementById('btn-refresh-servers').onclick = () => {
+      if (state.socket && state.socket.connected) state.socket.emit('get_servers');
+      else renderServerList(localFallbackServers, false);
+    };
+
+    document.getElementById('btn-toggle-create-form').onclick = () => {
+      const box = document.getElementById('create-server-box');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    };
+
+    document.getElementById('btn-confirm-create-server').onclick = () => {
+      const srvName = document.getElementById('srv-name-input').value.trim() || 'Phòng Doors But Gei';
+      const maxPlayers = Number(document.getElementById('srv-max-input').value) || 4;
+      const password = document.getElementById('srv-pass-input').value.trim() || null;
+      const pName = document.getElementById('player-name-input').value.trim() || 'Host_01';
+
+      if (state.socket && state.socket.connected) {
+        state.socket.emit('create_server', { name: srvName, maxPlayers, password, playerName: pName }, (res) => {
+          if (res && !res.ok) showToast(res.error || 'Lỗi tạo server.');
+        });
+      } else {
+        state.lobbyRoom = {
+          id: 'local_created_' + Date.now(),
+          name: srvName,
+          maxPlayers,
+          status: 'waiting',
+          seed: Math.floor(Math.random() * 900000) + 100000,
+          hostId: 'local_me',
+          players: [{ id: 'local_me', name: pName }]
+        };
+        state.mode = 'lobby';
+        closeModal('server-modal');
+        renderLobby(state.lobbyRoom);
+        document.getElementById('lobby-modal').classList.add('open');
+      }
+    };
+
+    document.getElementById('btn-leave-lobby').onclick = () => {
+      if (state.socket && state.socket.connected) state.socket.emit('leave_server');
+      state.lobbyRoom = null;
+      state.mode = 'menu';
+      closeModal('lobby-modal');
+    };
+
+    document.getElementById('btn-host-start-game').onclick = () => {
+      if (state.socket && state.socket.connected) {
+        state.socket.emit('start_game', (res) => {
+          if (res && !res.ok) showToast(res.error || 'Chỉ Chủ phòng mới có thể bắt đầu.');
+        });
+      } else if (state.lobbyRoom) {
+        enterGameplay(state.lobbyRoom.seed, false);
+      }
+    };
+
+    document.getElementById('btn-toggle-flash').onclick = () => {
+      if (state.mode !== 'playing') return;
+      state.flashlightOn = !state.flashlightOn;
+      flashlight.intensity = state.flashlightOn ? 3.0 : 0;
+      syncToggleButtons();
+    };
+
+    document.getElementById('btn-toggle-audio').onclick = () => {
+      sound.toggle();
+      syncToggleButtons();
+    };
+
+    document.getElementById('btn-spectate-next').onclick = () => {
+      cycleSpectateTarget(1);
+    };
+
+    document.getElementById('btn-spectate-guiding').onclick = () => {
+      triggerGuidingLight(state.lastDeathInfo.killer, state.lastDeathInfo.advice);
+    };
+
+    document.getElementById('btn-exit-game').onclick = () => {
+      if (document.pointerLockElement) document.exitPointerLock();
+      if (state.isOnline && state.socket && state.socket.connected) state.socket.emit('leave_server');
+      clearRemotePlayers();
+      state.isOnline = false;
+      state.mode = 'menu';
+      document.getElementById('hud').classList.remove('active');
+      document.getElementById('mod-menu-panel').classList.remove('open');
+      document.getElementById('spectate-bar').classList.remove('active');
+      document.getElementById('monster-warning-banner').style.display = 'none';
+      document.getElementById('main-menu').style.display = 'flex';
+    };
+
+    document.getElementById('btn-gl-retry').onclick = () => {
+      enterGameplay(state.seed, state.isOnline);
+    };
+
+    document.getElementById('btn-gl-menu').onclick = () => {
+      document.getElementById('guiding-light-screen').classList.remove('active');
+      document.getElementById('main-menu').style.display = 'flex';
+      state.mode = 'menu';
+    };
+
+    function emitPlayerSync() {
+      if (!state.isOnline || !state.socket || !state.socket.connected) return;
+      state.socket.emit('player_update', {
+        pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+        yaw: camera.rotation.y,
+        crouching: state.crouching,
+        hiding: Boolean(state.hidingInCloset),
+        roomIndex: state.currentRoomIndex,
+        hp: state.hp
+      });
+    }
+
+    // ================= MAIN LOOP =================
+    let lastTime = performance.now();
+    let syncTimer = 0;
+    let hudTimer = 0;
+
+    updateLoadedRooms(1);
+    camera.position.set(0, 1.8, -5.5);
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (state.mode === 'menu') {
+        camera.position.x = Math.sin(now * 0.00035) * 1.4;
+        camera.position.z = -6.0 + Math.cos(now * 0.00025) * 2.0;
+        camera.rotation.y = Math.sin(now * 0.00035) * 0.25;
+      } else if (state.mode === 'playing') {
+        updateMovement(dt);
+        updateAnimations(dt);
+        updatePendingSpawns(dt);
+        updateMonsters(dt);
+        updateHeartbeatMinigame(dt);
+
+        hudTimer += dt;
+        if (hudTimer >= 0.08) {
+          hudTimer = 0;
+          updateHud();
+        }
+
+        syncTimer += dt;
+        if (syncTimer >= 0.09) {
+          syncTimer = 0;
+          emitPlayerSync();
+        }
+      } else if (state.mode === 'spectating') {
+        updateThirdPersonSpectate(dt);
+        updateAnimations(dt);
+        hudTimer += dt;
+        if (hudTimer >= 0.1) {
+          hudTimer = 0;
+          updateHud();
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
