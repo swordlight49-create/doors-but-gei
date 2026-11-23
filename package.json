@@ -1,0 +1,23 @@
+{
+  "name": "doors-but-gei-online",
+  "version": "1.0.0",
+  "description": "Online Multiplayer Server for Doors But Gei - Copyright Binlight",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "doors-but-gei",
+    "socket.io",
+    "express",
+    "multiplayer",
+    "binlight"
+  ],
+  "author": "Binlight",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
